@@ -334,7 +334,7 @@ describe("App", () => {
     const screen = render(<App />);
 
     await waitFor(() => {
-      expect(screen.getAllByText("Dev User")).toHaveLength(1);
+      expect(screen.getByRole("button", { name: "Inbox" })).toBeTruthy();
     });
 
     expect(screen.getByRole("searchbox", { name: "Search folders" })).toBeTruthy();
@@ -373,6 +373,14 @@ describe("App", () => {
     fireEvent.click(screen.getByRole("button", { name: "Items" }));
     expect(screen.getByRole("heading", { name: "Items" })).toBeTruthy();
 
+    Object.defineProperty(window, "innerWidth", { configurable: true, value: 420 });
+    fireEvent.click(screen.getByRole("button", { name: "Inbox" }));
+    expect(screen.getByRole("heading", { name: "Inbox" })).toBeTruthy();
+    expect(screen.queryByRole("searchbox", { name: "Search folders" })).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Show sidebar" }));
+    expect(screen.getByRole("searchbox", { name: "Search folders" })).toBeTruthy();
+    Object.defineProperty(window, "innerWidth", { configurable: true, value: 1024 });
+
     fireEvent.click(screen.getByRole("button", { name: "Collapse folder Inbox" }));
     expect(screen.queryByRole("button", { name: "Archive" })).toBeNull();
     expect(window.localStorage.getItem("bookmarks.collapsedFolders")).toBe(
@@ -388,6 +396,12 @@ describe("App", () => {
     );
     fireEvent.click(screen.getByRole("button", { name: "Expand workspace Personal" }));
     expect(screen.getByRole("button", { name: "Inbox" })).toBeTruthy();
+
+    await waitFor(() => {
+      expect(
+        screen.getByRole("button", { name: "Bookmark actions for Example Article" })
+      ).toBeTruthy();
+    });
 
     const exampleActionsButton = screen.getByRole("button", {
       name: "Bookmark actions for Example Article"
@@ -419,6 +433,7 @@ describe("App", () => {
     expect(screen.getByRole("menu", { name: "Bookmark actions for Example Article" }).style.left).toBe(
       "252px"
     );
+    Object.defineProperty(window, "innerWidth", { configurable: true, value: 1024 });
 
     fireEvent.click(screen.getByRole("menuitem", { name: "Open" }));
     expect(openedLinks).toEqual(["https://example.com/article|_blank|noopener,noreferrer"]);

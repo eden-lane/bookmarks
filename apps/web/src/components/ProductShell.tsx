@@ -1,4 +1,4 @@
-import { type CSSProperties, useState } from "react";
+import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import type { FolderItem } from "@bookmarks/shared";
 import { IconBookmark, IconDatabase, IconLayoutSidebarLeftExpand } from "@tabler/icons-react";
@@ -11,6 +11,11 @@ import {
   DEFAULT_FOLDER_ICON_COLOR,
   getFolderIconComponent
 } from "../features/folders/folderIcons";
+
+const STACKED_SIDEBAR_BREAKPOINT = 768;
+
+const isStackedSidebarViewport = () =>
+  typeof window !== "undefined" && window.innerWidth < STACKED_SIDEBAR_BREAKPOINT;
 
 export const ProductShell = () => {
   const [activeFolderId, setActiveFolderId] = useState<string | null>(null);
@@ -34,22 +39,27 @@ export const ProductShell = () => {
     setBookmarkDialogOpen(true);
   };
 
+  const selectFolder = (folderId: string | null) => {
+    setActiveFolderId(folderId);
+
+    if (isStackedSidebarViewport()) {
+      setIsSidebarVisible(false);
+    }
+  };
+
   return (
-    <main
-      className="min-h-screen bg-gray-50 font-sans text-slate-950 md:h-screen md:overflow-hidden"
-      style={{ "--sidebar-width": isSidebarVisible ? "300px" : "0px" } as CSSProperties}
-    >
+    <main className="min-h-screen bg-gray-50 font-sans text-slate-950 md:h-screen md:overflow-hidden">
       <aside
         className={[
-          "overflow-hidden bg-gray-50 text-slate-950 transition-[max-height,opacity] duration-300 ease-out md:fixed md:inset-y-0 md:left-0 md:z-20 md:max-h-none md:w-[var(--sidebar-width)] md:transition-[width,opacity]",
+          "fixed inset-y-0 left-0 z-30 w-[min(300px,calc(100vw-48px))] overflow-hidden bg-gray-50 text-slate-950 transition-[transform,opacity] duration-300 ease-out md:z-20 md:w-[300px]",
           isSidebarVisible
-            ? "max-h-[80vh] border-b border-gray-200 opacity-100 md:border-r md:border-b-0"
-            : "max-h-0 border-b-0 opacity-0 md:border-r-0"
+            ? "translate-x-0 border-r border-gray-200 opacity-100 shadow-[16px_0_44px_rgb(15_23_42_/_0.14)] md:shadow-none"
+            : "pointer-events-none -translate-x-full border-r-0 opacity-0"
         ].join(" ")}
         aria-label="Primary"
         aria-hidden={!isSidebarVisible}
       >
-        <div className="min-w-0 px-3 py-3 md:h-full md:w-[300px] md:overflow-y-auto md:px-4 md:py-4">
+        <div className="h-full w-[min(300px,calc(100vw-48px))] min-w-0 overflow-y-auto px-3 py-3 md:w-[300px] md:px-4 md:py-4">
           <FolderSidebar
             activeFolderId={activeFolderId}
             currentUser={currentUser.data}
@@ -58,16 +68,16 @@ export const ProductShell = () => {
             isLoading={folders.isLoading}
             onAddBookmark={openBookmarkDialog}
             onHideSidebar={() => setIsSidebarVisible(false)}
-            onSelectFolder={setActiveFolderId}
+            onSelectFolder={selectFolder}
           />
         </div>
       </aside>
 
       <section
-        className="flex min-w-0 flex-col gap-5 p-5 transition-[margin-left] duration-300 ease-out md:ml-[var(--sidebar-width)] md:h-screen md:overflow-y-auto md:p-7"
+        className="flex min-w-0 flex-col gap-5 p-5 md:h-screen md:overflow-y-auto md:p-7"
         aria-label="Items workspace"
       >
-        <header className="flex items-start gap-3">
+        <header className="grid grid-cols-[2.5rem_minmax(0,1fr)] items-center gap-3">
           {!isSidebarVisible ? (
             <button
               className="grid h-10 w-10 shrink-0 place-items-center rounded-xl border border-gray-200 bg-white text-slate-950 outline-none hover:bg-gray-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-500"
@@ -83,8 +93,10 @@ export const ProductShell = () => {
                 focusable="false"
               />
             </button>
-          ) : null}
-          <div className="col-span-3 min-w-0">
+          ) : (
+            <span className="h-10 w-10" aria-hidden="true" />
+          )}
+          <div className="min-w-0">
             <FolderBreadcrumbs folders={activeFolderPath} />
           </div>
         </header>
