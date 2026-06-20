@@ -33,6 +33,7 @@ import {
   IconBriefcase,
   IconBulb,
   IconCalendar,
+  IconCheck,
   IconChevronDown,
   IconChevronRight,
   IconCode,
@@ -254,7 +255,7 @@ const ProductShell = () => {
               />
             </button>
           ) : null}
-          <div className="min-w-0">
+          <div className="col-span-3 min-w-0">
             <p className="mb-1 text-[13px] font-bold text-[#858b9a]">{username}</p>
             <h1 className="m-0 text-[34px] leading-[1.1] font-bold">
               {activeFolder?.name ?? "Items"}
@@ -669,7 +670,7 @@ const FolderTreeRow = ({
         }}
       >
         {isEditing ? (
-          <div className="min-w-0">
+          <div className="col-span-3 min-w-0">
             <InlineFolderForm
               defaultValue={folder.name}
               defaultIconColor={folder.iconColor}
@@ -884,7 +885,7 @@ const InlineFolderForm = ({
 
   return (
     <form
-      className="grid flex-1 gap-2 rounded-lg border border-[#dfe4ef] bg-white p-2"
+      className="flex min-w-0 flex-1 items-center gap-1"
       onSubmit={(event) => {
         event.preventDefault();
         const formData = new FormData(event.currentTarget);
@@ -899,9 +900,9 @@ const InlineFolderForm = ({
         }
       }}
     >
-      <div className="flex gap-2">
+      <div className="flex min-w-0 flex-1 items-center gap-1">
         <button
-          className="grid h-9 w-9 shrink-0 place-items-center rounded-lg border border-[#dfe4ef] bg-white outline-none hover:bg-[#f7f8fc] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#3b8df5]"
+          className="grid h-8 w-8 shrink-0 place-items-center rounded-lg border border-transparent bg-transparent outline-none hover:bg-[#f7f8fc] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#3b8df5]"
           aria-label="Choose folder icon"
           type="button"
           onClick={() => setIsIconPickerOpen(true)}
@@ -909,7 +910,7 @@ const InlineFolderForm = ({
           <Icon size={19} stroke={1.5} color={iconColor} aria-hidden="true" focusable="false" />
         </button>
         <input
-          className="min-h-9 min-w-0 flex-1 rounded-lg border border-[#dfe4ef] bg-white px-2.5 text-sm font-semibold text-[#242833] outline-none placeholder:text-[#9aa1ad] focus:border-[#3b8df5] focus:ring-3 focus:ring-[#d9eaff]"
+          className="min-h-8 min-w-0 flex-1 rounded-md border border-transparent bg-transparent px-1.5 text-sm font-medium text-[#242833] outline-none placeholder:text-[#9aa1ad]"
           aria-label="Folder title"
           name="name"
           placeholder="Folder title"
@@ -928,21 +929,25 @@ const InlineFolderForm = ({
         onOpenChange={setIsIconPickerOpen}
       />
       {error ? <p className="m-0 text-xs font-bold text-[#9a4d0a]">{error}</p> : null}
-      <div className="flex justify-end gap-2">
+      <div className="flex shrink-0 items-center gap-1">
         <button
-          className="min-h-8 rounded-lg border border-[#dfe4ef] bg-white px-2.5 text-xs font-extrabold text-[#4b5262] outline-none hover:bg-[#f7f8fc] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#3b8df5]"
+          className="grid h-8 w-8 place-items-center rounded-lg border border-transparent bg-transparent text-[#697080] outline-none hover:bg-[#f7f8fc] hover:text-[#242833] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#3b8df5]"
+          aria-label="Cancel"
           disabled={isPending}
+          title="Cancel"
           type="button"
           onClick={onCancel}
         >
-          Cancel
+          <IconX size={16} stroke={1.5} aria-hidden="true" focusable="false" />
         </button>
         <button
-          className="min-h-8 rounded-lg border border-[#3b8df5] bg-[#3b8df5] px-2.5 text-xs font-extrabold text-white outline-none hover:bg-[#2f80ed] disabled:cursor-not-allowed disabled:border-[#91bff8] disabled:bg-[#91bff8] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#3b8df5]"
+          className="grid h-8 w-8 place-items-center rounded-lg border border-transparent bg-transparent text-[#3b8df5] outline-none hover:bg-[#eef6ff] disabled:cursor-not-allowed disabled:text-[#91bff8] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#3b8df5]"
+          aria-label={isPending ? "Saving" : submitLabel}
           disabled={isPending}
+          title={isPending ? "Saving" : submitLabel}
           type="submit"
         >
-          {isPending ? "Saving" : submitLabel}
+          <IconCheck size={17} stroke={1.8} aria-hidden="true" focusable="false" />
         </button>
       </div>
     </form>
