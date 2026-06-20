@@ -28,6 +28,7 @@ import {
   IconAlertTriangle,
   IconBookmark,
   IconChevronDown,
+  IconCopy,
   IconDatabase,
   IconDotsVertical,
   IconExternalLink,
@@ -48,6 +49,7 @@ import {
   createFolder,
   deleteFolder,
   apiAssetUrl,
+  deleteBookmark,
   getBookmarks,
   getCurrentUser,
   getFolders,
@@ -67,6 +69,10 @@ export const App = () => {
 type FolderNode = FolderItem & {
   children: FolderNode[];
 };
+
+const CONTEXT_MENU_MARGIN = 8;
+const FOLDER_CONTEXT_MENU_SIZE = { height: 172, width: 190 };
+const BOOKMARK_CONTEXT_MENU_SIZE = { height: 128, width: 160 };
 
 const ProductShell = () => {
   const [activeFolderId, setActiveFolderId] = useState<string | null>(null);
@@ -92,12 +98,12 @@ const ProductShell = () => {
 
   return (
     <main
-      className="grid min-h-screen grid-cols-1 bg-gray-50 font-sans text-slate-950 transition-[grid-template-columns] duration-300 ease-out md:grid-cols-[var(--sidebar-width)_minmax(0,1fr)]"
+      className="min-h-screen bg-gray-50 font-sans text-slate-950 md:h-screen md:overflow-hidden"
       style={{ "--sidebar-width": isSidebarVisible ? "300px" : "0px" } as CSSProperties}
     >
       <aside
         className={[
-          "overflow-hidden bg-gray-50 text-slate-950 transition-[max-height,opacity] duration-300 ease-out md:min-h-screen md:max-h-none md:transition-opacity",
+          "overflow-hidden bg-gray-50 text-slate-950 transition-[max-height,opacity] duration-300 ease-out md:fixed md:inset-y-0 md:left-0 md:z-20 md:max-h-none md:w-[var(--sidebar-width)] md:transition-[width,opacity]",
           isSidebarVisible
             ? "max-h-[80vh] border-b border-gray-200 opacity-100 md:border-r md:border-b-0"
             : "max-h-0 border-b-0 opacity-0 md:border-r-0"
@@ -105,7 +111,7 @@ const ProductShell = () => {
         aria-label="Primary"
         aria-hidden={!isSidebarVisible}
       >
-        <div className="min-w-0 px-3 py-3 md:px-4 md:py-4">
+        <div className="min-w-0 px-3 py-3 md:h-full md:w-[300px] md:overflow-y-auto md:px-4 md:py-4">
           <FolderSidebar
             activeFolderId={activeFolderId}
             currentUser={currentUser.data}
@@ -119,7 +125,10 @@ const ProductShell = () => {
         </div>
       </aside>
 
-      <section className="flex min-w-0 flex-col gap-7 p-5 md:p-7" aria-label="Items workspace">
+      <section
+        className="flex min-w-0 flex-col gap-7 p-5 transition-[margin-left] duration-300 ease-out md:ml-[var(--sidebar-width)] md:h-screen md:overflow-y-auto md:p-7"
+        aria-label="Items workspace"
+      >
         <header className="flex items-start gap-3">
           {!isSidebarVisible ? (
             <button
@@ -233,7 +242,10 @@ const FolderSidebar = ({
   }, [menu]);
 
   const openFolderMenu = (folder: FolderItem, x: number, y: number) => {
-    setMenu({ folderId: folder.id, x, y });
+    setMenu({
+      folderId: folder.id,
+      ...clampContextMenuPosition(x, y, FOLDER_CONTEXT_MENU_SIZE)
+    });
   };
 
   const menuFolder = menu ? folders.find((folder) => folder.id === menu.folderId) ?? null : null;
@@ -662,7 +674,7 @@ const FolderContextMenu = ({
   onEditFolder: () => void;
 }) => (
   <div
-    className="fixed z-30 grid min-w-[190px] gap-1 rounded-lg border border-[#dfe4ef] bg-white p-1.5 text-sm font-bold text-[#4b5262] shadow-[0_18px_55px_rgb(22_28_43_/_0.16)]"
+    className="fixed z-30 grid w-[190px] gap-1 rounded-lg border border-[#dfe4ef] bg-white p-1.5 text-sm font-bold text-[#4b5262] shadow-[0_18px_55px_rgb(22_28_43_/_0.16)]"
     role="menu"
     aria-label={`Folder actions for ${folder.name}`}
     style={{ left: x, top: y }}
@@ -862,6 +874,8 @@ const BookmarksWorkspace = ({
   folderName: string | null;
 }) => {
   const loadMoreRef = useRef<HTMLDivElement | null>(null);
+  const queryClient = useQueryClient();
+  const [notification, setNotification] = useState<string | null>(null);
   const bookmarks = useInfiniteQuery({
     queryKey: ["bookmarks", folderId],
     queryFn: ({ pageParam }) => getBookmarks({ cursor: pageParam, folderId, limit: 20 }),
@@ -871,6 +885,42 @@ const BookmarksWorkspace = ({
   const { fetchNextPage, hasNextPage, isFetchingNextPage, refetch } = bookmarks;
   const items = bookmarks.data?.pages.flatMap((page) => page.items) ?? [];
   const hasPendingMetadata = items.some((item) => item.metadataStatus === "pending");
+  const deleteBookmarkMutation = useMutation({
+    mutationFn: deleteBookmark,
+    onMutate: async ({ bookmarkId }) => {
+      const queryKey = ["bookmarks", folderId];
+
+      await queryClient.cancelQueries({ queryKey });
+
+      const previousBookmarks =
+        queryClient.getQueryData<InfiniteData<BookmarksPageResponse, string | null>>(queryKey);
+
+      queryClient.setQueryData<InfiniteData<BookmarksPageResponse, string | null>>(
+        queryKey,
+        (current) =>
+          current
+            ? {
+                ...current,
+                pages: current.pages.map((page) => ({
+                  ...page,
+                  items: page.items.filter((item) => item.id !== bookmarkId)
+                }))
+              }
+            : current
+      );
+
+      return { previousBookmarks, queryKey };
+    },
+    onError: (_error, _input, context) => {
+      if (context?.previousBookmarks) {
+        queryClient.setQueryData(context.queryKey, context.previousBookmarks);
+      }
+    },
+    onSettled: () => {
+      void queryClient.invalidateQueries({ queryKey: ["bookmarks"] });
+      void queryClient.invalidateQueries({ queryKey: ["folders"] });
+    }
+  });
 
   useEffect(() => {
     const node = loadMoreRef.current;
@@ -909,6 +959,16 @@ const BookmarksWorkspace = ({
 
     return () => window.clearInterval(interval);
   }, [hasPendingMetadata, refetch]);
+
+  useEffect(() => {
+    if (!notification) {
+      return;
+    }
+
+    const timeout = window.setTimeout(() => setNotification(null), 2200);
+
+    return () => window.clearTimeout(timeout);
+  }, [notification]);
 
   if (bookmarks.isLoading) {
     return (
@@ -989,30 +1049,86 @@ const BookmarksWorkspace = ({
   }
 
   return (
-    <section
-      className="grid gap-3"
-      aria-label={folderName ? `${folderName} items` : "Saved items"}
-      aria-busy={bookmarks.isFetchingNextPage}
-    >
-      {items.map((item) => (
-        <BookmarkRow item={item} key={item.id} />
-      ))}
-      <div ref={loadMoreRef} className="min-h-6" aria-hidden="true" />
-      {bookmarks.isFetchingNextPage ? (
-        <p className="m-0 rounded-lg border border-[#e4e7ef] bg-white px-4 py-3 text-sm font-bold text-[#697080]">
-          Loading more items
-        </p>
+    <>
+      <section
+        className="grid gap-3"
+        aria-label={folderName ? `${folderName} items` : "Saved items"}
+        aria-busy={bookmarks.isFetchingNextPage}
+      >
+        {items.map((item) => (
+          <BookmarkRow
+            item={item}
+            key={item.id}
+            showFolderName={folderId === null}
+            onDeleteBookmark={(bookmarkId) => deleteBookmarkMutation.mutate({ bookmarkId })}
+            onLinkCopied={() => setNotification("Link copied")}
+          />
+        ))}
+        <div ref={loadMoreRef} className="min-h-6" aria-hidden="true" />
+        {bookmarks.isFetchingNextPage ? (
+          <p className="m-0 rounded-lg border border-[#e4e7ef] bg-white px-4 py-3 text-sm font-bold text-[#697080]">
+            Loading more items
+          </p>
+        ) : null}
+        {!bookmarks.hasNextPage ? (
+          <p className="m-0 px-1 py-2 text-sm font-bold text-[#858b9a]">All items loaded</p>
+        ) : null}
+      </section>
+      {notification ? (
+        <div
+          className="fixed right-4 bottom-4 z-40 rounded-lg border border-[#dfe4ef] bg-white px-3 py-2 text-sm font-extrabold text-[#242833] shadow-[0_18px_55px_rgb(22_28_43_/_0.16)]"
+          role="status"
+          aria-live="polite"
+        >
+          {notification}
+        </div>
       ) : null}
-      {!bookmarks.hasNextPage ? (
-        <p className="m-0 px-1 py-2 text-sm font-bold text-[#858b9a]">All items loaded</p>
-      ) : null}
-    </section>
+    </>
   );
 };
 
-const BookmarkRow = ({ item }: { item: BookmarkItem }) => {
+const BookmarkRow = ({
+  item,
+  showFolderName,
+  onDeleteBookmark,
+  onLinkCopied
+}: {
+  item: BookmarkItem;
+  showFolderName: boolean;
+  onDeleteBookmark: (bookmarkId: string) => void;
+  onLinkCopied: () => void;
+}) => {
   const host = hostFromUrl(item.url);
   const faviconSrc = item.faviconUrl ? apiAssetUrl(item.faviconUrl) : null;
+  const [menu, setMenu] = useState<{ x: number; y: number } | null>(null);
+  const title = item.title || host || item.url;
+
+  useEffect(() => {
+    if (!menu) {
+      return;
+    }
+
+    const closeMenu = () => setMenu(null);
+
+    window.addEventListener("click", closeMenu);
+
+    return () => window.removeEventListener("click", closeMenu);
+  }, [menu]);
+
+  const openLink = () => {
+    window.open(item.url, "_blank", "noopener,noreferrer");
+    setMenu(null);
+  };
+
+  const copyLink = () => {
+    void copyBookmarkLink(item.url).then(onLinkCopied);
+    setMenu(null);
+  };
+
+  const deleteItem = () => {
+    onDeleteBookmark(item.id);
+    setMenu(null);
+  };
 
   return (
     <article className="rounded-lg border border-[#e4e7ef] bg-white p-4 shadow-[0_14px_40px_rgb(46_54_77_/_0.045)]">
@@ -1054,7 +1170,7 @@ const BookmarkRow = ({ item }: { item: BookmarkItem }) => {
               </div>
               <div className="min-w-0">
                 <h2 className="m-0 truncate text-lg leading-[1.25] font-extrabold">
-                  {item.title || host || item.url}
+                  {title}
                 </h2>
                 <a
                   className="mt-1 flex min-w-0 items-center gap-1.5 text-sm font-semibold text-[#2f80ed] no-underline hover:underline"
@@ -1067,10 +1183,31 @@ const BookmarkRow = ({ item }: { item: BookmarkItem }) => {
                 </a>
               </div>
             </div>
-            <span className="flex w-fit items-center gap-1.5 rounded-lg border border-[#e7eaf1] bg-[#fbfcff] px-2.5 py-1 text-xs font-extrabold text-[#697080]">
-              <IconFolder size={16} stroke={1.5} aria-hidden="true" focusable="false" />
-              {item.folderName}
-            </span>
+            <div className="flex w-fit shrink-0 items-center gap-2">
+              {showFolderName ? (
+                <span
+                  className="flex items-center gap-1.5 rounded-lg border border-[#e7eaf1] bg-[#fbfcff] px-2.5 py-1 text-xs font-extrabold text-[#697080]"
+                  aria-label={`Bookmark folder ${item.folderName}`}
+                >
+                  <IconFolder size={16} stroke={1.5} aria-hidden="true" focusable="false" />
+                  {item.folderName}
+                </span>
+              ) : null}
+              <button
+                className="grid h-8 w-8 place-items-center rounded-lg border border-[#e7eaf1] bg-[#fbfcff] text-[#697080] outline-none hover:bg-[#f7f8fc] hover:text-[#242833] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#3b8df5]"
+                aria-label={`Bookmark actions for ${title}`}
+                type="button"
+                onClick={(event) => {
+                  event.stopPropagation();
+                  const rect = event.currentTarget.getBoundingClientRect();
+                  setMenu(
+                    clampContextMenuPosition(rect.left, rect.bottom + 4, BOOKMARK_CONTEXT_MENU_SIZE)
+                  );
+                }}
+              >
+                <IconDotsVertical size={16} stroke={1.5} aria-hidden="true" focusable="false" />
+              </button>
+            </div>
           </div>
           {item.description ? (
             <p className="m-0 max-w-[74ch] text-sm leading-6 text-[#697080]">
@@ -1082,8 +1219,105 @@ const BookmarkRow = ({ item }: { item: BookmarkItem }) => {
           </time>
         </div>
       </div>
+      {menu ? (
+        <BookmarkContextMenu
+          itemTitle={title}
+          x={menu.x}
+          y={menu.y}
+          onOpenLink={openLink}
+          onCopyLink={copyLink}
+          onDelete={deleteItem}
+        />
+      ) : null}
     </article>
   );
+};
+
+const BookmarkContextMenu = ({
+  itemTitle,
+  x,
+  y,
+  onOpenLink,
+  onCopyLink,
+  onDelete
+}: {
+  itemTitle: string;
+  x: number;
+  y: number;
+  onOpenLink: () => void;
+  onCopyLink: () => void;
+  onDelete: () => void;
+}) => (
+  <div
+    className="fixed z-30 grid w-[160px] gap-1 rounded-lg border border-[#dfe4ef] bg-white p-1.5 text-sm font-bold text-[#4b5262] shadow-[0_18px_55px_rgb(22_28_43_/_0.16)]"
+    role="menu"
+    aria-label={`Bookmark actions for ${itemTitle}`}
+    style={{ left: x, top: y }}
+    onClick={(event) => event.stopPropagation()}
+  >
+    <button
+      className="flex min-h-9 items-center gap-2 rounded-md px-2.5 text-left outline-none hover:bg-[#f7f8fc] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#3b8df5]"
+      role="menuitem"
+      type="button"
+      onClick={onOpenLink}
+    >
+      <IconExternalLink size={16} stroke={1.5} aria-hidden="true" focusable="false" />
+      <span>Open</span>
+    </button>
+    <button
+      className="flex min-h-9 items-center gap-2 rounded-md px-2.5 text-left outline-none hover:bg-[#f7f8fc] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#3b8df5]"
+      role="menuitem"
+      type="button"
+      onClick={onCopyLink}
+    >
+      <IconCopy size={16} stroke={1.5} aria-hidden="true" focusable="false" />
+      <span>Copy link</span>
+    </button>
+    <button
+      className="flex min-h-9 items-center gap-2 rounded-md px-2.5 text-left text-[#b42318] outline-none hover:bg-[#f7f8fc] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#3b8df5]"
+      role="menuitem"
+      type="button"
+      onClick={onDelete}
+    >
+      <IconTrash size={16} stroke={1.5} aria-hidden="true" focusable="false" />
+      <span>Delete</span>
+    </button>
+  </div>
+);
+
+const copyBookmarkLink = async (url: string) => {
+  if (navigator.clipboard?.writeText) {
+    await navigator.clipboard.writeText(url);
+    return;
+  }
+
+  const textarea = document.createElement("textarea");
+  textarea.value = url;
+  textarea.setAttribute("readonly", "");
+  textarea.style.position = "fixed";
+  textarea.style.left = "-9999px";
+  document.body.append(textarea);
+  textarea.select();
+  document.execCommand("copy");
+  textarea.remove();
+};
+
+const clampContextMenuPosition = (
+  x: number,
+  y: number,
+  size: { height: number; width: number }
+) => {
+  const viewportWidth =
+    typeof window === "undefined" ? size.width + CONTEXT_MENU_MARGIN * 2 : window.innerWidth;
+  const viewportHeight =
+    typeof window === "undefined" ? size.height + CONTEXT_MENU_MARGIN * 2 : window.innerHeight;
+  const maxX = Math.max(CONTEXT_MENU_MARGIN, viewportWidth - size.width - CONTEXT_MENU_MARGIN);
+  const maxY = Math.max(CONTEXT_MENU_MARGIN, viewportHeight - size.height - CONTEXT_MENU_MARGIN);
+
+  return {
+    x: Math.min(Math.max(CONTEXT_MENU_MARGIN, x), maxX),
+    y: Math.min(Math.max(CONTEXT_MENU_MARGIN, y), maxY)
+  };
 };
 
 const hostFromUrl = (url: string) => {

@@ -20,6 +20,11 @@ export interface CreateBookmarkInput {
   url: string;
 }
 
+export interface DeleteBookmarkInput {
+  allowedLibraryIds: string[];
+  bookmarkId: string;
+}
+
 export interface ListFoldersInput {
   libraryIds: string[];
 }
@@ -47,6 +52,7 @@ export interface DeleteFolderInput {
 export interface BookmarksStore {
   listBookmarks(input: ListBookmarksInput): Promise<BookmarkItem[]>;
   createBookmark(input: CreateBookmarkInput): Promise<BookmarkItem>;
+  deleteBookmark(input: DeleteBookmarkInput): Promise<{ deletedBookmarkId: string }>;
   getFavicon(id: string): Promise<{ contentType: string; imageBytes: Buffer } | null>;
   listFolders(input: ListFoldersInput): Promise<FolderItem[]>;
   createFolder(input: CreateFolderInput): Promise<FolderItem>;

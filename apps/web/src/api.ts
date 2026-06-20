@@ -3,6 +3,7 @@ import type {
   BookmarksPageResponse,
   CreateBookmarkInput,
   CreateFolderInput,
+  DeleteBookmarkInput,
   CurrentUserResponse,
   DeleteFolderInput,
   FolderItem,
@@ -30,6 +31,7 @@ interface WebRpcClient extends Record<string, NestedClient<Record<never, never>>
 
 interface BookmarksRpcClient extends Record<string, NestedClient<Record<never, never>>> {
   create: RpcProcedure<CreateBookmarkInput, BookmarkItem>;
+  delete: RpcProcedure<DeleteBookmarkInput, { deletedBookmarkId: string }>;
   list: RpcProcedure<ListBookmarksInput, BookmarksPageResponse>;
 }
 
@@ -62,6 +64,10 @@ export const getBookmarks = async ({
 
 export const createBookmark = async (input: CreateBookmarkInput): Promise<BookmarkItem> =>
   rpc.bookmarks.create(input);
+
+export const deleteBookmark = async (
+  input: DeleteBookmarkInput
+): Promise<{ deletedBookmarkId: string }> => rpc.bookmarks.delete(input);
 
 export const getFolders = async (): Promise<FolderItem[]> => rpc.folders.list();
 

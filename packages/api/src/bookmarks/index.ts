@@ -1,6 +1,7 @@
 export * from "./createBookmark";
 export * from "./createFolder";
 export * from "./cursor";
+export * from "./deleteBookmark";
 export * from "./deleteFolder";
 export * from "./folderUtils";
 export * from "./getFavicon";

@@ -1,6 +1,7 @@
 import type {
   CreateBookmarkInput,
   CreateFolderInput,
+  DeleteBookmarkInput,
   DeleteFolderInput,
   UpdateFolderInput
 } from "@bookmarks/shared";
@@ -88,6 +89,23 @@ export const createRpcRouter = (options: RpcRouterOptions) => ({
       }
 
       return createdBookmark;
+    }),
+    delete: os.handler(async ({ input }) => {
+      assertCurrentUser(options.currentUser);
+      assertBookmarksStore(options.bookmarksStore);
+
+      const bookmark = parseDeleteBookmarkInput(input);
+
+      if (!bookmark) {
+        throw new ORPCError("BAD_REQUEST", {
+          message: "Choose a bookmark to delete"
+        });
+      }
+
+      return options.bookmarksStore.deleteBookmark({
+        ...bookmark,
+        allowedLibraryIds: currentUserLibraryIds(options.currentUser)
+      });
     }),
     list: os.handler(async ({ input }) => {
       if (!options.currentUser) {
@@ -226,6 +244,16 @@ const parseCreateBookmarkInput = (input: unknown): CreateBookmarkInput | null =>
   } catch {
     return null;
   }
+};
+
+const parseDeleteBookmarkInput = (input: unknown): DeleteBookmarkInput | null => {
+  if (!isRecord(input) || typeof input.bookmarkId !== "string" || !input.bookmarkId) {
+    return null;
+  }
+
+  return {
+    bookmarkId: input.bookmarkId
+  };
 };
 
 const parseCreateFolderInput = (input: unknown): CreateFolderInput | null => {

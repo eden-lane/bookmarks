@@ -70,6 +70,10 @@ export interface CreateBookmarkInput {
   folderId?: string;
 }
 
+export interface DeleteBookmarkInput {
+  bookmarkId: string;
+}
+
 export interface ListBookmarksInput {
   cursor?: string | null;
   folderId?: string | null;

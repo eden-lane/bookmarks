@@ -53,6 +53,9 @@ const createBookmarksStore = (overrides: Partial<BookmarksStore>): BookmarksStor
   async createFolder() {
     throw new Error("not used");
   },
+  async deleteBookmark() {
+    throw new Error("not used");
+  },
   async deleteFolder() {
     throw new Error("not used");
   },
@@ -300,6 +303,40 @@ describe("bookmarks RPC", () => {
     });
 
     expect(response.status).toBe(400);
+  });
+
+  test("deletes a bookmark through oRPC for the current user's libraries", async () => {
+    const calls: Parameters<BookmarksStore["deleteBookmark"]>[0][] = [];
+    const bookmarksStore = createBookmarksStore({
+      async deleteBookmark(input) {
+        calls.push(input);
+
+        return { deletedBookmarkId: input.bookmarkId };
+      }
+    });
+    const app = createApp({
+      bookmarksStore,
+      currentUser,
+      dependencies: dependencies()
+    });
+
+    const response = await app.request("/rpc/bookmarks/delete", {
+      body: JSON.stringify({
+        json: { bookmarkId: "00000000-0000-4000-8000-000000000010" }
+      }),
+      headers: {
+        "content-type": "application/json"
+      },
+      method: "POST"
+    });
+    const body = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(body.json.deletedBookmarkId).toBe("00000000-0000-4000-8000-000000000010");
+    expect(calls[0]).toEqual({
+      allowedLibraryIds: [DEV_PERSONAL_LIBRARY_ID, DEV_ORGANIZATION_LIBRARY_ID],
+      bookmarkId: "00000000-0000-4000-8000-000000000010"
+    });
   });
 });
 

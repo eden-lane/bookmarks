@@ -89,8 +89,25 @@ describe("App", () => {
       }
     ];
     let finishCreate = () => {};
+    const copiedLinks: string[] = [];
+    const openedLinks: string[] = [];
     const createGate = new Promise<void>((resolve) => {
       finishCreate = resolve;
+    });
+    Object.defineProperty(globalThis.navigator, "clipboard", {
+      configurable: true,
+      value: {
+        writeText: async (text: string) => {
+          copiedLinks.push(text);
+        }
+      }
+    });
+    Object.defineProperty(window, "open", {
+      configurable: true,
+      value: (url: string, target: string, features: string) => {
+        openedLinks.push(`${url}|${target}|${features}`);
+        return null;
+      }
     });
 
     globalThis.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
@@ -229,6 +246,31 @@ describe("App", () => {
         });
       }
 
+      if (url.pathname === "/rpc/bookmarks/delete") {
+        const body = (await request.json()) as { json?: { bookmarkId?: string } };
+        const deletedBookmarkId = body.json?.bookmarkId ?? "";
+        const itemIndex = savedItems.findIndex((item) => item.id === deletedBookmarkId);
+
+        if (itemIndex >= 0) {
+          const [deletedItem] = savedItems.splice(itemIndex, 1);
+          const folderIndex = folders.findIndex((folder) => folder.id === deletedItem?.folderId);
+
+          if (folderIndex >= 0) {
+            folders[folderIndex] = {
+              ...folders[folderIndex],
+              bookmarkCount: Math.max(0, folders[folderIndex].bookmarkCount - 1),
+              updatedAt: "2026-06-20T12:00:00.000Z"
+            };
+          }
+        }
+
+        return new Response(JSON.stringify({ json: { deletedBookmarkId } }), {
+          headers: {
+            "content-type": "application/json"
+          }
+        });
+      }
+
       if (url.pathname === "/rpc/health") {
         return new Response(
           JSON.stringify({
@@ -294,6 +336,65 @@ describe("App", () => {
       ).toBeTruthy();
       expect(screen.getByRole("img", { name: "No thumbnail available" })).toBeTruthy();
       expect(screen.getByRole("button", { name: "Folder actions for Inbox" })).toBeTruthy();
+      expect(screen.getAllByLabelText("Bookmark folder Inbox")).toHaveLength(2);
+    });
+
+    const exampleActionsButton = screen.getByRole("button", {
+      name: "Bookmark actions for Example Article"
+    });
+    Object.defineProperty(window, "innerWidth", { configurable: true, value: 420 });
+    Object.defineProperty(window, "innerHeight", { configurable: true, value: 640 });
+    Object.defineProperty(exampleActionsButton, "getBoundingClientRect", {
+      configurable: true,
+      value: () =>
+        ({
+          bottom: 120,
+          height: 32,
+          left: 390,
+          right: 422,
+          top: 88,
+          width: 32,
+          x: 390,
+          y: 88
+        }) as DOMRect
+    });
+
+    fireEvent.click(exampleActionsButton);
+
+    await waitFor(() => {
+      expect(screen.getByRole("menuitem", { name: "Open" })).toBeTruthy();
+      expect(screen.getByRole("menuitem", { name: "Copy link" })).toBeTruthy();
+      expect(screen.getByRole("menuitem", { name: "Delete" })).toBeTruthy();
+    });
+    expect(screen.getByRole("menu", { name: "Bookmark actions for Example Article" }).style.left).toBe(
+      "252px"
+    );
+
+    fireEvent.click(screen.getByRole("menuitem", { name: "Open" }));
+    expect(openedLinks).toEqual(["https://example.com/article|_blank|noopener,noreferrer"]);
+
+    fireEvent.click(exampleActionsButton);
+
+    await waitFor(() => {
+      expect(screen.getByRole("menuitem", { name: "Copy link" })).toBeTruthy();
+    });
+
+    fireEvent.click(screen.getByRole("menuitem", { name: "Copy link" }));
+    await waitFor(() => {
+      expect(copiedLinks).toEqual(["https://example.com/article"]);
+      expect(screen.getByRole("status").textContent).toBe("Link copied");
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "Bookmark actions for Plain Bookmark" }));
+
+    await waitFor(() => {
+      expect(screen.getByRole("menuitem", { name: "Delete" })).toBeTruthy();
+    });
+
+    fireEvent.click(screen.getByRole("menuitem", { name: "Delete" }));
+
+    await waitFor(() => {
+      expect(screen.queryByText("Plain Bookmark")).toBeNull();
     });
 
     fireEvent.click(screen.getByRole("button", { name: "Folder actions for Inbox" }));
@@ -318,6 +419,14 @@ describe("App", () => {
     });
 
     expect(screen.queryByText("Healthy")).toBeNull();
+
+    fireEvent.click(screen.getByRole("button", { name: "Inbox" }));
+
+    await waitFor(() => {
+      expect(screen.getByText("Example Article")).toBeTruthy();
+    });
+
+    expect(screen.queryByLabelText("Bookmark folder Inbox")).toBeNull();
 
     fireEvent.click(screen.getByRole("button", { name: "Read later" }));
 
@@ -353,5 +462,5 @@ describe("App", () => {
     await waitFor(() => {
       expect(document.body.textContent).toContain("https://added.example/post");
     });
-  });
+  }, 15000);
 });
