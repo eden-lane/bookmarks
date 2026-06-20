@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type TouchEvent as ReactTouchEvent } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { FolderItem } from "@bookmarks/shared";
 import {
@@ -18,6 +18,14 @@ import {
 } from "../features/folders/folderIcons";
 
 const STACKED_SIDEBAR_BREAKPOINT = 768;
+const SIDEBAR_CLOSE_DRAG_THRESHOLD = 64;
+
+type SidebarTouchState = {
+  mode: "pending" | "horizontal" | "vertical";
+  width: number;
+  x: number;
+  y: number;
+};
 
 const isStackedSidebarViewport = () =>
   typeof window !== "undefined" && window.innerWidth < STACKED_SIDEBAR_BREAKPOINT;
@@ -25,11 +33,13 @@ const isStackedSidebarViewport = () =>
 export const ProductShell = () => {
   const queryClient = useQueryClient();
   const sidebarScrollRef = useRef<HTMLDivElement | null>(null);
+  const sidebarTouchStartRef = useRef<SidebarTouchState | null>(null);
   const [activeFolderId, setActiveFolderId] = useState<string | null>(null);
   const [bookmarkDialogOpen, setBookmarkDialogOpen] = useState(false);
   const [bookmarkTargetFolder, setBookmarkTargetFolder] = useState<FolderItem | null>(null);
-  const [isSidebarVisible, setIsSidebarVisible] = useState(true);
+  const [isSidebarVisible, setIsSidebarVisible] = useState(() => !isStackedSidebarViewport());
   const [isStackedSidebar, setIsStackedSidebar] = useState(isStackedSidebarViewport);
+  const [sidebarDragOffset, setSidebarDragOffset] = useState(0);
   const currentUser = useQuery({
     queryKey: ["current-user"],
     queryFn: getCurrentUser
@@ -166,17 +176,94 @@ export const ProductShell = () => {
     }
   };
 
+  const handleSidebarTouchStart = (event: ReactTouchEvent<HTMLElement>) => {
+    const touch = event.touches[0];
+
+    if (!isStackedSidebar || !isSidebarVisible || !touch) {
+      sidebarTouchStartRef.current = null;
+      setSidebarDragOffset(0);
+      return;
+    }
+
+    sidebarTouchStartRef.current = {
+      mode: "pending",
+      width: event.currentTarget.getBoundingClientRect().width || 300,
+      x: touch.clientX,
+      y: touch.clientY
+    };
+    setSidebarDragOffset(0);
+  };
+
+  const handleSidebarTouchMove = (event: ReactTouchEvent<HTMLElement>) => {
+    const start = sidebarTouchStartRef.current;
+    const touch = event.touches[0];
+
+    if (!isStackedSidebar || !start || !touch) {
+      return;
+    }
+
+    const deltaX = touch.clientX - start.x;
+    const deltaY = touch.clientY - start.y;
+
+    if (start.mode === "pending") {
+      if (Math.abs(deltaX) < 8 && Math.abs(deltaY) < 8) {
+        return;
+      }
+
+      start.mode = Math.abs(deltaX) > Math.abs(deltaY) * 1.15 ? "horizontal" : "vertical";
+    }
+
+    if (start.mode !== "horizontal") {
+      return;
+    }
+
+    event.preventDefault();
+    setSidebarDragOffset(Math.max(-start.width, Math.min(0, deltaX)));
+  };
+
+  const handleSidebarTouchEnd = (event: ReactTouchEvent<HTMLElement>) => {
+    const start = sidebarTouchStartRef.current;
+    const touch = event.changedTouches[0];
+    sidebarTouchStartRef.current = null;
+
+    if (!isStackedSidebar || !start || !touch) {
+      return;
+    }
+
+    const deltaX = touch.clientX - start.x;
+    const deltaY = touch.clientY - start.y;
+    const isLeftSwipe =
+      start.mode === "horizontal" &&
+      deltaX < -SIDEBAR_CLOSE_DRAG_THRESHOLD &&
+      Math.abs(deltaX) > Math.abs(deltaY) * 1.25;
+
+    if (isLeftSwipe) {
+      setIsSidebarVisible(false);
+    }
+
+    setSidebarDragOffset(0);
+  };
+
   return (
     <main className="min-h-dvh w-full max-w-full overflow-x-hidden bg-gray-50 font-sans text-slate-950 md:flex md:h-screen md:overflow-hidden">
       <aside
         className={[
           "fixed inset-y-0 left-0 z-30 h-dvh max-h-dvh w-[min(300px,calc(100vw-48px))] touch-pan-y overflow-hidden overscroll-contain bg-gray-50 text-slate-950 transition-[transform,opacity] duration-300 ease-out md:static md:h-screen md:max-h-none md:w-[300px] md:shrink-0",
+          sidebarDragOffset < 0 ? "transition-none" : "",
           isSidebarVisible
             ? "translate-x-0 border-r border-gray-200 opacity-100 shadow-[16px_0_44px_rgb(15_23_42_/_0.14)] md:shadow-none"
             : "pointer-events-none -translate-x-full border-r-0 opacity-0 md:hidden"
         ].join(" ")}
         aria-label="Primary"
         aria-hidden={!isSidebarVisible}
+        style={
+          sidebarDragOffset < 0
+            ? { transform: `translate3d(${sidebarDragOffset}px, 0, 0)` }
+            : undefined
+        }
+        onTouchStart={handleSidebarTouchStart}
+        onTouchMove={handleSidebarTouchMove}
+        onTouchEnd={handleSidebarTouchEnd}
       >
         <div
           className="h-full w-[min(300px,calc(100vw-48px))] min-w-0 overflow-x-hidden overflow-y-auto overscroll-contain px-3 py-3 md:w-[300px] md:px-4 md:py-4"

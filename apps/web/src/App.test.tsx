@@ -371,15 +371,50 @@ describe("App", () => {
     }) as unknown as typeof fetch;
     const { App } = await import("./App");
 
+    Object.defineProperty(window, "innerWidth", { configurable: true, value: 420 });
     const screen = render(<App />);
 
     await waitFor(() => {
-      expect(screen.getByRole("button", { name: "Inbox" })).toBeTruthy();
+      expect(screen.getByRole("button", { name: "Show sidebar" })).toBeTruthy();
     });
 
+    expect(screen.queryByRole("searchbox", { name: "Search folders" })).toBeNull();
+    expect(screen.getByRole("heading", { name: "Inbox" })).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Show sidebar" }));
     expect(screen.getByRole("searchbox", { name: "Search folders" })).toBeTruthy();
     expect(screen.getByRole("button", { name: "Inbox" })).toBeTruthy();
-    expect(screen.getByRole("heading", { name: "Inbox" })).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Close sidebar" })).toBeNull();
+    const sidebar = screen.container.querySelector('aside[aria-label="Primary"]');
+    expect(sidebar).toBeTruthy();
+    Object.defineProperty(sidebar as HTMLElement, "getBoundingClientRect", {
+      configurable: true,
+      value: () =>
+        ({
+          bottom: 640,
+          height: 640,
+          left: 0,
+          right: 300,
+          top: 0,
+          width: 300,
+          x: 0,
+          y: 0
+        }) as DOMRect
+    });
+    fireEvent.touchStart(sidebar as HTMLElement, {
+      touches: [{ clientX: 260, clientY: 80 }]
+    });
+    fireEvent.touchMove(sidebar as HTMLElement, {
+      touches: [{ clientX: 170, clientY: 88 }]
+    });
+    expect((sidebar as HTMLElement).style.transform).toBe("translate3d(-90px, 0, 0)");
+    fireEvent.touchEnd(sidebar as HTMLElement, {
+      changedTouches: [{ clientX: 160, clientY: 88 }]
+    });
+    expect(screen.queryByRole("searchbox", { name: "Search folders" })).toBeNull();
+    Object.defineProperty(window, "innerWidth", { configurable: true, value: 1024 });
+    window.dispatchEvent(new window.Event("resize"));
+    fireEvent.click(screen.getByRole("button", { name: "Show sidebar" }));
+    expect(screen.getByRole("searchbox", { name: "Search folders" })).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: "Hide sidebar" }));
     expect(screen.queryByRole("searchbox", { name: "Search folders" })).toBeNull();
     fireEvent.click(screen.getByRole("button", { name: "Show sidebar" }));
