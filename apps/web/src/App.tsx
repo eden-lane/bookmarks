@@ -34,6 +34,7 @@ import {
   IconFolder,
   IconFolderPlus,
   IconPencil,
+  IconPhoto,
   IconPlus,
   IconRefresh,
   IconSearch,
@@ -977,48 +978,73 @@ const BookmarkRow = ({ item }: { item: BookmarkItem }) => {
   const faviconSrc = item.faviconUrl ? apiAssetUrl(item.faviconUrl) : null;
 
   return (
-    <article className="grid gap-3 rounded-lg border border-[#e4e7ef] bg-white p-4 shadow-[0_14px_40px_rgb(46_54_77_/_0.045)]">
-      <div className="flex min-w-0 flex-col gap-3 md:flex-row md:items-start md:justify-between">
-        <div className="flex min-w-0 items-start gap-3">
-          <div className="grid h-10 w-10 shrink-0 place-items-center overflow-hidden rounded-lg border border-[#e7eaf1] bg-[#fbfcff]">
-            {faviconSrc ? (
-              <img
-                className="h-5 w-5 object-contain"
-                src={faviconSrc}
-                alt=""
-                loading="lazy"
-                referrerPolicy="no-referrer"
-              />
-            ) : (
-              <IconBookmark size={19} stroke={2.1} aria-hidden="true" focusable="false" />
-            )}
-          </div>
-          <div className="min-w-0">
-            <h2 className="m-0 truncate text-lg leading-[1.25] font-extrabold">
-              {item.title || host || item.url}
-            </h2>
-            <a
-              className="mt-1 flex min-w-0 items-center gap-1.5 text-sm font-semibold text-[#2f80ed] no-underline hover:underline"
-              href={item.url}
-              rel="noreferrer"
-              target="_blank"
+    <article className="rounded-lg border border-[#e4e7ef] bg-white p-4 shadow-[0_14px_40px_rgb(46_54_77_/_0.045)]">
+      <div className="grid min-w-0 grid-cols-[88px_minmax(0,1fr)] gap-4 sm:grid-cols-[144px_minmax(0,1fr)]">
+        <div className="aspect-[4/3] overflow-hidden rounded-lg border border-[#e7eaf1] bg-[#f3f5f9] sm:aspect-[3/2]">
+          {item.imageUrl ? (
+            <img
+              className="h-full w-full object-cover"
+              src={item.imageUrl}
+              alt=""
+              loading="lazy"
+              referrerPolicy="no-referrer"
+            />
+          ) : (
+            <div
+              className="grid h-full w-full place-items-center bg-[#f7f8fc] text-[#9aa1ad]"
+              role="img"
+              aria-label="No thumbnail available"
             >
-              <IconExternalLink size={15} stroke={2.2} aria-hidden="true" focusable="false" />
-              <span className="truncate">{item.url}</span>
-            </a>
-          </div>
+              <IconPhoto size={28} stroke={1.8} aria-hidden="true" focusable="false" />
+            </div>
+          )}
         </div>
-        <span className="flex w-fit items-center gap-1.5 rounded-lg border border-[#e7eaf1] bg-[#fbfcff] px-2.5 py-1 text-xs font-extrabold text-[#697080]">
-          <IconFolder size={14} stroke={2.1} aria-hidden="true" focusable="false" />
-          {item.folderName}
-        </span>
+        <div className="grid min-w-0 gap-3">
+          <div className="flex min-w-0 flex-col gap-3 md:flex-row md:items-start md:justify-between">
+            <div className="flex min-w-0 items-start gap-3">
+              <div className="grid h-10 w-10 shrink-0 place-items-center overflow-hidden rounded-lg border border-[#e7eaf1] bg-[#fbfcff]">
+                {faviconSrc ? (
+                  <img
+                    className="h-5 w-5 object-contain"
+                    src={faviconSrc}
+                    alt=""
+                    loading="lazy"
+                    referrerPolicy="no-referrer"
+                  />
+                ) : (
+                  <IconBookmark size={19} stroke={2.1} aria-hidden="true" focusable="false" />
+                )}
+              </div>
+              <div className="min-w-0">
+                <h2 className="m-0 truncate text-lg leading-[1.25] font-extrabold">
+                  {item.title || host || item.url}
+                </h2>
+                <a
+                  className="mt-1 flex min-w-0 items-center gap-1.5 text-sm font-semibold text-[#2f80ed] no-underline hover:underline"
+                  href={item.url}
+                  rel="noreferrer"
+                  target="_blank"
+                >
+                  <IconExternalLink size={15} stroke={2.2} aria-hidden="true" focusable="false" />
+                  <span className="truncate">{item.url}</span>
+                </a>
+              </div>
+            </div>
+            <span className="flex w-fit items-center gap-1.5 rounded-lg border border-[#e7eaf1] bg-[#fbfcff] px-2.5 py-1 text-xs font-extrabold text-[#697080]">
+              <IconFolder size={14} stroke={2.1} aria-hidden="true" focusable="false" />
+              {item.folderName}
+            </span>
+          </div>
+          {item.description ? (
+            <p className="m-0 max-w-[74ch] text-sm leading-6 text-[#697080]">
+              {item.description}
+            </p>
+          ) : null}
+          <time className="text-xs font-bold text-[#858b9a]" dateTime={item.createdAt}>
+            Added {formatBookmarkDate(item.createdAt)}
+          </time>
+        </div>
       </div>
-      {item.description ? (
-        <p className="m-0 max-w-[74ch] text-sm leading-6 text-[#697080]">{item.description}</p>
-      ) : null}
-      <time className="text-xs font-bold text-[#858b9a]" dateTime={item.createdAt}>
-        Added {formatBookmarkDate(item.createdAt)}
-      </time>
     </article>
   );
 };

@@ -49,6 +49,23 @@ describe("App", () => {
         faviconUrl: "/favicons/00000000-0000-4000-8000-000000000030",
         createdAt: "2026-06-19T12:00:00.000Z",
         updatedAt: "2026-06-19T12:00:00.000Z"
+      },
+      {
+        id: "00000000-0000-4000-8000-000000000012",
+        libraryId: "00000000-0000-4000-8000-000000000003",
+        folderId: "00000000-0000-4000-8000-000000000005",
+        folderName: "Inbox",
+        url: "https://plain.example/post",
+        title: "Plain Bookmark",
+        description: null,
+        siteName: "Plain",
+        imageUrl: null,
+        metadataStatus: "fetched",
+        metadataFetchedAt: "2026-06-19T12:00:01.000Z",
+        faviconId: null,
+        faviconUrl: null,
+        createdAt: "2026-06-19T11:00:00.000Z",
+        updatedAt: "2026-06-19T11:00:00.000Z"
       }
     ];
     const folders: FolderItem[] = [
@@ -57,7 +74,7 @@ describe("App", () => {
         libraryId: "00000000-0000-4000-8000-000000000003",
         parentId: null,
         name: "Inbox",
-        bookmarkCount: 1,
+        bookmarkCount: 2,
         createdAt: "2026-06-19T12:00:00.000Z",
         updatedAt: "2026-06-19T12:00:00.000Z"
       },
@@ -265,7 +282,13 @@ describe("App", () => {
     await waitFor(() => {
       expect(screen.getByText("Example Article")).toBeTruthy();
       expect(screen.getByText("https://example.com/article")).toBeTruthy();
-      expect(document.querySelector('img[src="http://localhost:3000/favicons/00000000-0000-4000-8000-000000000030"]')).toBeTruthy();
+      expect(document.querySelector('img[src="https://example.com/cover.png"]')).toBeTruthy();
+      expect(
+        document.querySelector(
+          'img[src="http://localhost:3000/favicons/00000000-0000-4000-8000-000000000030"]'
+        )
+      ).toBeTruthy();
+      expect(screen.getByRole("img", { name: "No thumbnail available" })).toBeTruthy();
       expect(screen.getByRole("button", { name: "Folder actions for Inbox" })).toBeTruthy();
     });
 
