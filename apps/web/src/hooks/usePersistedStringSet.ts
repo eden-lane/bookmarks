@@ -1,6 +1,15 @@
 import { useCallback, useEffect, useState } from "react";
 
-export const usePersistedStringSet = (storageKey: string): [ReadonlySet<string>, (id: string) => void] => {
+export const usePersistedStringSet = (
+  storageKey: string
+): [
+  ReadonlySet<string>,
+  (id: string) => void,
+  {
+    add: (id: string) => void;
+    remove: (id: string) => void;
+  }
+] => {
   const [items, setItems] = useState<Set<string>>(() => readStringSet(storageKey));
 
   useEffect(() => {
@@ -21,7 +30,31 @@ export const usePersistedStringSet = (storageKey: string): [ReadonlySet<string>,
     });
   }, []);
 
-  return [items, toggleItem];
+  const addItem = useCallback((id: string) => {
+    setItems((current) => {
+      if (current.has(id)) {
+        return current;
+      }
+
+      const next = new Set(current);
+      next.add(id);
+      return next;
+    });
+  }, []);
+
+  const removeItem = useCallback((id: string) => {
+    setItems((current) => {
+      if (!current.has(id)) {
+        return current;
+      }
+
+      const next = new Set(current);
+      next.delete(id);
+      return next;
+    });
+  }, []);
+
+  return [items, toggleItem, { add: addItem, remove: removeItem }];
 };
 
 const readStringSet = (storageKey: string) => {

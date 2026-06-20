@@ -53,10 +53,10 @@ export const FolderSidebar = ({
   const [editingFolderId, setEditingFolderId] = useState<string | null>(null);
   const [menu, setMenu] = useState<{ folderId: string; x: number; y: number } | null>(null);
   const [folderToDelete, setFolderToDelete] = useState<FolderItem | null>(null);
-  const [collapsedLibraryIds, toggleCollapsedLibrary] = usePersistedStringSet(
+  const [collapsedLibraryIds, toggleCollapsedLibrary, collapsedLibraries] = usePersistedStringSet(
     COLLAPSED_LIBRARIES_STORAGE_KEY
   );
-  const [collapsedFolderIds, toggleCollapsedFolder] = usePersistedStringSet(
+  const [collapsedFolderIds, toggleCollapsedFolder, collapsedFolders] = usePersistedStringSet(
     COLLAPSED_FOLDERS_STORAGE_KEY
   );
   const folderTree = useMemo(() => buildFolderTree(folders), [folders]);
@@ -74,6 +74,10 @@ export const FolderSidebar = ({
         ...currentFolders.filter((currentFolder) => currentFolder.id !== folder.id),
         folder
       ]);
+      collapsedLibraries.remove(folder.libraryId);
+      if (folder.parentId) {
+        collapsedFolders.remove(folder.parentId);
+      }
       setCreatingTarget(null);
       onSelectFolder(folder.id);
       void queryClient.invalidateQueries({ queryKey: ["folders"] });
@@ -110,6 +114,14 @@ export const FolderSidebar = ({
       folderId: folder.id,
       ...clampContextMenuPosition(x, y, FOLDER_CONTEXT_MENU_SIZE)
     });
+  };
+
+  const startCreatingFolder = (libraryId: string, parentId: string | null) => {
+    collapsedLibraries.remove(libraryId);
+    if (parentId) {
+      collapsedFolders.remove(parentId);
+    }
+    setCreatingTarget({ libraryId, parentId });
   };
 
   const menuFolder = menu ? folders.find((folder) => folder.id === menu.folderId) ?? null : null;
@@ -161,10 +173,7 @@ export const FolderSidebar = ({
               aria-label="Create folder"
               type="button"
               onClick={() =>
-                setCreatingTarget({
-                  libraryId: currentUser.libraries[0].id,
-                  parentId: null
-                })
+                startCreatingFolder(currentUser.libraries[0].id, null)
               }
             >
               <IconFolderPlus size={16} stroke={1.5} aria-hidden="true" focusable="false" />
@@ -239,7 +248,7 @@ export const FolderSidebar = ({
                   className="grid h-8 w-8 place-items-center rounded-lg border border-transparent text-gray-500 outline-none hover:border-gray-200 hover:bg-white hover:text-slate-950 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-500"
                   aria-label={`Create folder in ${library.name}`}
                   type="button"
-                  onClick={() => setCreatingTarget({ libraryId: library.id, parentId: null })}
+                  onClick={() => startCreatingFolder(library.id, null)}
                 >
                   <IconPlus size={16} stroke={1.5} aria-hidden="true" focusable="false" />
                 </button>
@@ -334,7 +343,7 @@ export const FolderSidebar = ({
           onCreateFolder={() => {
             setMenu(null);
             setEditingFolderId(null);
-            setCreatingTarget({ libraryId: menuFolder.libraryId, parentId: menuFolder.id });
+            startCreatingFolder(menuFolder.libraryId, menuFolder.id);
           }}
           onDeleteFolder={() => {
             setMenu(null);

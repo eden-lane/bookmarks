@@ -483,7 +483,17 @@ describe("App", () => {
     expect(window.localStorage.getItem("bookmarks.collapsedFolders")).toBe(
       '["00000000-0000-4000-8000-000000000005"]'
     );
-    fireEvent.click(screen.getByRole("button", { name: "Expand folder Research" }));
+    fireEvent.click(screen.getByRole("button", { name: "Folder actions for Research" }));
+    await waitFor(() => {
+      expect(screen.getByRole("menuitem", { name: "Create new folder" })).toBeTruthy();
+    });
+    fireEvent.click(screen.getByRole("menuitem", { name: "Create new folder" }));
+    await waitFor(() => {
+      expect(screen.getByLabelText("Folder title")).toBeTruthy();
+      expect(screen.getByRole("button", { name: "Archive" })).toBeTruthy();
+      expect(window.localStorage.getItem("bookmarks.collapsedFolders")).toBe("[]");
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
     expect(screen.getByRole("button", { name: "Archive" })).toBeTruthy();
 
     fireEvent.click(screen.getByRole("button", { name: "Collapse workspace Personal" }));
