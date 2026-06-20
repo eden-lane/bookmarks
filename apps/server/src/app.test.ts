@@ -1,6 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import type { BookmarksStore } from "@bookmarks/api/bookmarks";
 import type { HealthDependencies } from "@bookmarks/api/health";
+import { Buffer } from "node:buffer";
 import {
   DEV_ORGANIZATION_ID,
   DEV_ORGANIZATION_INBOX_FOLDER_ID,
@@ -54,6 +55,9 @@ const createBookmarksStore = (overrides: Partial<BookmarksStore>): BookmarksStor
   },
   async deleteFolder() {
     throw new Error("not used");
+  },
+  async getFavicon() {
+    return null;
   },
   async listBookmarks() {
     return [];
@@ -151,6 +155,12 @@ describe("bookmarks RPC", () => {
             url: "https://example.com/first",
             title: "First",
             description: null,
+            siteName: null,
+            imageUrl: null,
+            metadataStatus: "fetched",
+            metadataFetchedAt: "2026-06-19T12:00:00.000Z",
+            faviconId: null,
+            faviconUrl: null,
             createdAt: "2026-06-19T12:00:00.000Z",
             updatedAt: "2026-06-19T12:00:00.000Z"
           },
@@ -162,6 +172,12 @@ describe("bookmarks RPC", () => {
             url: "https://example.com/second",
             title: "Second",
             description: null,
+            siteName: null,
+            imageUrl: null,
+            metadataStatus: "fetched",
+            metadataFetchedAt: "2026-06-18T12:00:00.000Z",
+            faviconId: null,
+            faviconUrl: null,
             createdAt: "2026-06-18T12:00:00.000Z",
             updatedAt: "2026-06-18T12:00:00.000Z"
           }
@@ -213,6 +229,7 @@ describe("bookmarks RPC", () => {
 
   test("creates a bookmark through oRPC in the personal inbox", async () => {
     const calls: Parameters<BookmarksStore["createBookmark"]>[0][] = [];
+    const queuedIds: string[] = [];
     const bookmarksStore = createBookmarksStore({
       async createBookmark(input) {
         calls.push(input);
@@ -225,12 +242,23 @@ describe("bookmarks RPC", () => {
           url: input.url,
           title: null,
           description: null,
+          siteName: null,
+          imageUrl: null,
+          metadataStatus: "pending",
+          metadataFetchedAt: null,
+          faviconId: null,
+          faviconUrl: null,
           createdAt: "2026-06-20T12:00:00.000Z",
           updatedAt: "2026-06-20T12:00:00.000Z"
         };
       }
     });
     const app = createApp({
+      bookmarkEnrichmentQueue: {
+        async enqueueSavedItem(savedItemId) {
+          queuedIds.push(savedItemId);
+        }
+      },
       bookmarksStore,
       currentUser,
       dependencies: dependencies()
@@ -253,6 +281,7 @@ describe("bookmarks RPC", () => {
       libraryId: DEV_PERSONAL_LIBRARY_ID,
       url: "https://example.com/article"
     });
+    expect(queuedIds).toEqual(["00000000-0000-4000-8000-000000000010"]);
   });
 
   test("rejects invalid bookmark URLs", async () => {
@@ -271,6 +300,33 @@ describe("bookmarks RPC", () => {
     });
 
     expect(response.status).toBe(400);
+  });
+});
+
+describe("favicon endpoint", () => {
+  test("streams stored favicon bytes", async () => {
+    const app = createApp({
+      bookmarksStore: createBookmarksStore({
+        async getFavicon(id) {
+          if (id !== "00000000-0000-4000-8000-000000000030") {
+            return null;
+          }
+
+          return {
+            contentType: "image/png",
+            imageBytes: Buffer.from([1, 2, 3])
+          };
+        }
+      }),
+      currentUser,
+      dependencies: dependencies()
+    });
+
+    const response = await app.request("/favicons/00000000-0000-4000-8000-000000000030");
+
+    expect(response.status).toBe(200);
+    expect(response.headers.get("content-type")).toBe("image/png");
+    expect(Array.from(new Uint8Array(await response.arrayBuffer()))).toEqual([1, 2, 3]);
   });
 });
 

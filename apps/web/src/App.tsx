@@ -44,6 +44,7 @@ import {
   createBookmark,
   createFolder,
   deleteFolder,
+  apiAssetUrl,
   getBookmarks,
   getCurrentUser,
   getFolders,
@@ -829,8 +830,9 @@ const BookmarksWorkspace = ({
     initialPageParam: null as string | null,
     getNextPageParam: (lastPage) => lastPage.nextCursor
   });
-  const { fetchNextPage, hasNextPage, isFetchingNextPage } = bookmarks;
+  const { fetchNextPage, hasNextPage, isFetchingNextPage, refetch } = bookmarks;
   const items = bookmarks.data?.pages.flatMap((page) => page.items) ?? [];
+  const hasPendingMetadata = items.some((item) => item.metadataStatus === "pending");
 
   useEffect(() => {
     const node = loadMoreRef.current;
@@ -857,6 +859,18 @@ const BookmarksWorkspace = ({
 
     return () => observer.disconnect();
   }, [fetchNextPage, hasNextPage, isFetchingNextPage]);
+
+  useEffect(() => {
+    if (!hasPendingMetadata) {
+      return;
+    }
+
+    const interval = window.setInterval(() => {
+      void refetch();
+    }, 3000);
+
+    return () => window.clearInterval(interval);
+  }, [hasPendingMetadata, refetch]);
 
   if (bookmarks.isLoading) {
     return (
@@ -960,23 +974,39 @@ const BookmarksWorkspace = ({
 
 const BookmarkRow = ({ item }: { item: BookmarkItem }) => {
   const host = hostFromUrl(item.url);
+  const faviconSrc = item.faviconUrl ? apiAssetUrl(item.faviconUrl) : null;
 
   return (
     <article className="grid gap-3 rounded-lg border border-[#e4e7ef] bg-white p-4 shadow-[0_14px_40px_rgb(46_54_77_/_0.045)]">
       <div className="flex min-w-0 flex-col gap-3 md:flex-row md:items-start md:justify-between">
-        <div className="min-w-0">
-          <h2 className="m-0 truncate text-lg leading-[1.25] font-extrabold">
-            {item.title || host || item.url}
-          </h2>
-          <a
-            className="mt-1 flex min-w-0 items-center gap-1.5 text-sm font-semibold text-[#2f80ed] no-underline hover:underline"
-            href={item.url}
-            rel="noreferrer"
-            target="_blank"
-          >
-            <IconExternalLink size={15} stroke={2.2} aria-hidden="true" focusable="false" />
-            <span className="truncate">{item.url}</span>
-          </a>
+        <div className="flex min-w-0 items-start gap-3">
+          <div className="grid h-10 w-10 shrink-0 place-items-center overflow-hidden rounded-lg border border-[#e7eaf1] bg-[#fbfcff]">
+            {faviconSrc ? (
+              <img
+                className="h-5 w-5 object-contain"
+                src={faviconSrc}
+                alt=""
+                loading="lazy"
+                referrerPolicy="no-referrer"
+              />
+            ) : (
+              <IconBookmark size={19} stroke={2.1} aria-hidden="true" focusable="false" />
+            )}
+          </div>
+          <div className="min-w-0">
+            <h2 className="m-0 truncate text-lg leading-[1.25] font-extrabold">
+              {item.title || host || item.url}
+            </h2>
+            <a
+              className="mt-1 flex min-w-0 items-center gap-1.5 text-sm font-semibold text-[#2f80ed] no-underline hover:underline"
+              href={item.url}
+              rel="noreferrer"
+              target="_blank"
+            >
+              <IconExternalLink size={15} stroke={2.2} aria-hidden="true" focusable="false" />
+              <span className="truncate">{item.url}</span>
+            </a>
+          </div>
         </div>
         <span className="flex w-fit items-center gap-1.5 rounded-lg border border-[#e7eaf1] bg-[#fbfcff] px-2.5 py-1 text-xs font-extrabold text-[#697080]">
           <IconFolder size={14} stroke={2.1} aria-hidden="true" focusable="false" />
@@ -1051,6 +1081,12 @@ const AddBookmarkDialog = ({
         url: input.url,
         title: null,
         description: null,
+        siteName: null,
+        imageUrl: null,
+        metadataStatus: "pending",
+        metadataFetchedAt: null,
+        faviconId: null,
+        faviconUrl: null,
         createdAt: now,
         updatedAt: now
       };

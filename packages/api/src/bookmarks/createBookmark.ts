@@ -1,6 +1,7 @@
 import { and, eq, sql } from "drizzle-orm";
 import type { Database } from "../db";
 import { schema } from "../db";
+import { bookmarkSelectFields, serializeBookmark } from "./bookmarkRows";
 import type { CreateBookmarkInput } from "./types";
 
 export const createBookmark = async (db: Database, input: CreateBookmarkInput) => {
@@ -28,17 +29,7 @@ export const createBookmark = async (db: Database, input: CreateBookmarkInput) =
   }
 
   const [row] = await db
-    .select({
-      id: schema.savedItems.id,
-      libraryId: schema.savedItems.libraryId,
-      folderId: schema.savedItems.folderId,
-      folderName: schema.folders.name,
-      url: schema.savedItems.url,
-      title: schema.savedItems.title,
-      description: schema.savedItems.description,
-      createdAt: schema.savedItems.createdAt,
-      updatedAt: schema.savedItems.updatedAt
-    })
+    .select(bookmarkSelectFields)
     .from(schema.savedItems)
     .innerJoin(
       schema.folders,
@@ -54,9 +45,5 @@ export const createBookmark = async (db: Database, input: CreateBookmarkInput) =
     throw new Error("Unable to load saved bookmark");
   }
 
-  return {
-    ...row,
-    createdAt: row.createdAt.toISOString(),
-    updatedAt: row.updatedAt.toISOString()
-  };
+  return serializeBookmark(row);
 };

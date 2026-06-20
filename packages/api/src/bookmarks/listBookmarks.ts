@@ -2,6 +2,7 @@ import type { BookmarksPageResponse } from "@bookmarks/shared";
 import { and, desc, eq, inArray, lt, or, type SQL } from "drizzle-orm";
 import type { Database } from "../db";
 import { schema } from "../db";
+import { bookmarkSelectFields, serializeBookmark } from "./bookmarkRows";
 import { encodeBookmarkCursor } from "./cursor";
 import type { BookmarksStore, ListBookmarksInput } from "./types";
 
@@ -32,17 +33,7 @@ export const listBookmarks = async (db: Database, input: ListBookmarksInput) => 
   }
 
   const rows = await db
-    .select({
-      id: schema.savedItems.id,
-      libraryId: schema.savedItems.libraryId,
-      folderId: schema.savedItems.folderId,
-      folderName: schema.folders.name,
-      url: schema.savedItems.url,
-      title: schema.savedItems.title,
-      description: schema.savedItems.description,
-      createdAt: schema.savedItems.createdAt,
-      updatedAt: schema.savedItems.updatedAt
-    })
+    .select(bookmarkSelectFields)
     .from(schema.savedItems)
     .innerJoin(
       schema.folders,
@@ -55,11 +46,7 @@ export const listBookmarks = async (db: Database, input: ListBookmarksInput) => 
     .orderBy(desc(schema.savedItems.createdAt), desc(schema.savedItems.id))
     .limit(input.limit + 1);
 
-  return rows.map((row) => ({
-    ...row,
-    createdAt: row.createdAt.toISOString(),
-    updatedAt: row.updatedAt.toISOString()
-  }));
+  return rows.map(serializeBookmark);
 };
 
 export const listBookmarksPage = async (

@@ -1,4 +1,8 @@
-import { createDatabaseBookmarksStore, type BookmarksStore } from "@bookmarks/api/bookmarks";
+import {
+  createDatabaseBookmarksStore,
+  type BookmarkEnrichmentQueue,
+  type BookmarksStore
+} from "@bookmarks/api/bookmarks";
 import { getCurrentUserResponse } from "@bookmarks/api/currentUser";
 import type { Database } from "@bookmarks/api/db";
 import type { DevIdentity } from "@bookmarks/api/identity";
@@ -12,6 +16,7 @@ export interface AppOptions {
   dependencies: HealthDependencies & { db?: Database };
   currentUser?: DevIdentity;
   bookmarksStore?: BookmarksStore;
+  bookmarkEnrichmentQueue?: BookmarkEnrichmentQueue;
 }
 
 export const createApp = (options: AppOptions) => {
@@ -22,6 +27,7 @@ export const createApp = (options: AppOptions) => {
   const rpcHandler = new RPCHandler(
     createRpcRouter({
       bookmarksStore,
+      bookmarkEnrichmentQueue: options.bookmarkEnrichmentQueue,
       currentUser: options.currentUser,
       dependencies: options.dependencies
     })
@@ -41,6 +47,26 @@ export const createApp = (options: AppOptions) => {
     }
 
     return context.json(getCurrentUserResponse(options.currentUser));
+  });
+
+  app.get("/favicons/:id", async (context) => {
+    if (!bookmarksStore) {
+      return context.notFound();
+    }
+
+    const favicon = await bookmarksStore.getFavicon(context.req.param("id"));
+
+    if (!favicon) {
+      return context.notFound();
+    }
+
+    return new Response(new Uint8Array(favicon.imageBytes), {
+      headers: {
+        "cache-control": "public, max-age=604800, immutable",
+        "content-length": String(favicon.imageBytes.byteLength),
+        "content-type": favicon.contentType
+      }
+    });
   });
 
   app.all("/rpc/*", async (context) => {

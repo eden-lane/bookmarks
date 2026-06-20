@@ -7,6 +7,7 @@ import type {
 import { ORPCError, os } from "@orpc/server";
 import {
   decodeBookmarkCursor,
+  type BookmarkEnrichmentQueue,
   listBookmarksPage,
   parseBookmarksLimit,
   type BookmarkCursor,
@@ -21,6 +22,7 @@ export interface RpcRouterOptions {
   dependencies: HealthDependencies;
   currentUser?: DevIdentity;
   bookmarksStore?: BookmarksStore;
+  bookmarkEnrichmentQueue?: BookmarkEnrichmentQueue;
 }
 
 export const createRpcRouter = (options: RpcRouterOptions) => ({
@@ -70,12 +72,22 @@ export const createRpcRouter = (options: RpcRouterOptions) => ({
         });
       }
 
-      return options.bookmarksStore.createBookmark({
+      const createdBookmark = await options.bookmarksStore.createBookmark({
         createdByUserId: options.currentUser.userId,
         folderId: targetFolder?.id ?? options.currentUser.personalInboxFolderId,
         libraryId: targetFolder?.libraryId ?? options.currentUser.personalLibraryId,
         url: bookmark.url
       });
+
+      if (createdBookmark.metadataStatus !== "fetched") {
+        await options.bookmarkEnrichmentQueue
+          ?.enqueueSavedItem(createdBookmark.id)
+          .catch((error: unknown) => {
+            console.error("Unable to enqueue bookmark enrichment", error);
+          });
+      }
+
+      return createdBookmark;
     }),
     list: os.handler(async ({ input }) => {
       if (!options.currentUser) {

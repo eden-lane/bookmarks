@@ -41,6 +41,12 @@ describe("App", () => {
         url: "https://example.com/article",
         title: "Example Article",
         description: "A saved bookmark from the API.",
+        siteName: "Example",
+        imageUrl: "https://example.com/cover.png",
+        metadataStatus: "fetched",
+        metadataFetchedAt: "2026-06-19T12:00:01.000Z",
+        faviconId: "00000000-0000-4000-8000-000000000030",
+        faviconUrl: "/favicons/00000000-0000-4000-8000-000000000030",
         createdAt: "2026-06-19T12:00:00.000Z",
         updatedAt: "2026-06-19T12:00:00.000Z"
       }
@@ -179,9 +185,15 @@ describe("App", () => {
           url: body.json?.url || "https://added.example/post",
           title: null,
           description: null,
+          siteName: null,
+          imageUrl: null,
+          metadataStatus: "pending",
+          metadataFetchedAt: null,
+          faviconId: null,
+          faviconUrl: null,
           createdAt: "2026-06-20T12:00:00.000Z",
           updatedAt: "2026-06-20T12:00:00.000Z"
-        };
+        } satisfies BookmarkItem;
         savedItems.unshift(savedItem);
         const folderIndex = folders.findIndex((folder) => folder.id === targetFolder.id);
 
@@ -253,6 +265,7 @@ describe("App", () => {
     await waitFor(() => {
       expect(screen.getByText("Example Article")).toBeTruthy();
       expect(screen.getByText("https://example.com/article")).toBeTruthy();
+      expect(document.querySelector('img[src="http://localhost:3000/favicons/00000000-0000-4000-8000-000000000030"]')).toBeTruthy();
       expect(screen.getByRole("button", { name: "Folder actions for Inbox" })).toBeTruthy();
     });
 

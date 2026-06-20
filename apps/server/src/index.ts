@@ -1,5 +1,6 @@
 import { ensureDevIdentity, type DevIdentity } from "@bookmarks/api/identity";
 import { createApp } from "./app";
+import { BookmarkEnrichmentWorker, RedisBookmarkEnrichmentQueue } from "./bookmarkEnrichmentQueue";
 import { createRuntimeClients } from "./clients";
 import { getConfig } from "./config";
 
@@ -20,9 +21,16 @@ if (config.authMode === "dev") {
 }
 
 const app = createApp({
+  bookmarkEnrichmentQueue: new RedisBookmarkEnrichmentQueue(clients.redis),
   dependencies: clients,
   currentUser
 });
+const bookmarkEnrichmentWorker = new BookmarkEnrichmentWorker({
+  db: clients.db,
+  redis: clients.redis
+});
+
+bookmarkEnrichmentWorker.start();
 
 Bun.serve({
   port: config.port,
@@ -32,6 +40,7 @@ Bun.serve({
 console.log(`API listening on http://localhost:${config.port}`);
 
 const shutdown = async () => {
+  await bookmarkEnrichmentWorker.stop();
   await clients.close();
   process.exit(0);
 };

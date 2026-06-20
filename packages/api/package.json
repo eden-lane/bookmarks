@@ -19,6 +19,7 @@
     "@bookmarks/shared": "workspace:*",
     "@orpc/server": "latest",
     "drizzle-orm": "latest",
+    "link-preview-js": "^4.0.3",
     "pg": "latest"
   },
   "devDependencies": {

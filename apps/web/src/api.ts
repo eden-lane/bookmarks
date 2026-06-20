@@ -74,3 +74,5 @@ export const updateFolder = async (input: UpdateFolderInput): Promise<FolderItem
 export const deleteFolder = async (
   input: DeleteFolderInput
 ): Promise<{ deletedFolderIds: string[] }> => rpc.folders.delete(input);
+
+export const apiAssetUrl = (path: string): string => new URL(path, apiBaseUrl).toString();

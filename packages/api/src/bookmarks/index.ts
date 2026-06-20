@@ -3,6 +3,8 @@ export * from "./createFolder";
 export * from "./cursor";
 export * from "./deleteFolder";
 export * from "./folderUtils";
+export * from "./getFavicon";
+export * from "./enrichment";
 export * from "./listBookmarks";
 export * from "./listFolders";
 export * from "./store";

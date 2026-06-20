@@ -1,6 +1,7 @@
 import { relations, sql } from "drizzle-orm";
 import {
   check,
+  customType,
   foreignKey,
   index,
   pgEnum,
@@ -12,9 +13,18 @@ import {
   uuid
 } from "drizzle-orm/pg-core";
 import type { AnyPgColumn } from "drizzle-orm/pg-core";
+import type { Buffer } from "node:buffer";
 
 export const organizationRole = pgEnum("organization_role", ["owner", "member"]);
 export const libraryKind = pgEnum("library_kind", ["personal", "organization"]);
+export const metadataStatus = pgEnum("metadata_status", ["pending", "fetched", "failed"]);
+export const faviconStatus = pgEnum("favicon_status", ["pending", "fetched", "failed"]);
+
+const bytea = customType<{ data: Buffer; driverData: Buffer }>({
+  dataType() {
+    return "bytea";
+  }
+});
 
 const timestamps = {
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
@@ -121,6 +131,21 @@ export const folders = pgTable(
   ]
 );
 
+export const favicons = pgTable(
+  "favicons",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    origin: text("origin").notNull(),
+    sourceUrl: text("source_url"),
+    contentType: text("content_type"),
+    imageBytes: bytea("image_bytes"),
+    status: faviconStatus("status").notNull().default("pending"),
+    fetchedAt: timestamp("fetched_at", { withTimezone: true }),
+    ...timestamps
+  },
+  (table) => [uniqueIndex("favicons_origin_unique_idx").on(table.origin)]
+);
+
 export const savedItems = pgTable(
   "saved_items",
   {
@@ -135,6 +160,11 @@ export const savedItems = pgTable(
     url: text("url").notNull(),
     title: text("title"),
     description: text("description"),
+    siteName: text("site_name"),
+    imageUrl: text("image_url"),
+    metadataStatus: metadataStatus("metadata_status").notNull().default("pending"),
+    metadataFetchedAt: timestamp("metadata_fetched_at", { withTimezone: true }),
+    faviconId: uuid("favicon_id").references(() => favicons.id, { onDelete: "set null" }),
     ...timestamps
   },
   (table) => [
@@ -290,6 +320,10 @@ export const librariesRelations = relations(libraries, ({ many, one }) => ({
   systemLabels: many(systemLabels)
 }));
 
+export const faviconsRelations = relations(favicons, ({ many }) => ({
+  savedItems: many(savedItems)
+}));
+
 export const foldersRelations = relations(folders, ({ many, one }) => ({
   library: one(libraries, {
     fields: [folders.libraryId],
@@ -318,6 +352,10 @@ export const savedItemsRelations = relations(savedItems, ({ many, one }) => ({
   createdBy: one(users, {
     fields: [savedItems.createdByUserId],
     references: [users.id]
+  }),
+  favicon: one(favicons, {
+    fields: [savedItems.faviconId],
+    references: [favicons.id]
   }),
   tags: many(savedItemTags),
   systemLabels: many(savedItemSystemLabels)
@@ -374,6 +412,8 @@ export type Library = typeof libraries.$inferSelect;
 export type NewLibrary = typeof libraries.$inferInsert;
 export type Folder = typeof folders.$inferSelect;
 export type NewFolder = typeof folders.$inferInsert;
+export type Favicon = typeof favicons.$inferSelect;
+export type NewFavicon = typeof favicons.$inferInsert;
 export type SavedItem = typeof savedItems.$inferSelect;
 export type NewSavedItem = typeof savedItems.$inferInsert;
 export type Tag = typeof tags.$inferSelect;

@@ -40,6 +40,12 @@ export interface BookmarkItem {
   url: string;
   title: string | null;
   description: string | null;
+  siteName: string | null;
+  imageUrl: string | null;
+  metadataStatus: "pending" | "fetched" | "failed";
+  metadataFetchedAt: string | null;
+  faviconId: string | null;
+  faviconUrl: string | null;
   createdAt: string;
   updatedAt: string;
 }
