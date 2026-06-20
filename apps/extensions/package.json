@@ -11,6 +11,8 @@
     "typecheck": "wxt prepare && tsc --noEmit -p tsconfig.json"
   },
   "dependencies": {
+    "@fontsource/open-sans": "latest",
+    "solid-icons": "latest",
     "solid-js": "latest"
   },
   "devDependencies": {

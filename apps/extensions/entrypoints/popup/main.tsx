@@ -2,6 +2,7 @@ import "./style.css";
 import { createMemo, createSignal, For, onMount, Show } from "solid-js";
 import { render } from "solid-js/web";
 import { browser } from "wxt/browser";
+import { DEFAULT_FOLDER_ICON_COLOR, TablerIcon } from "../../lib/folderIcons";
 import { rpcCall } from "../../lib/rpc";
 import { getApiBaseUrl } from "../../lib/settings";
 
@@ -19,6 +20,8 @@ interface FolderItem {
   libraryId: string;
   parentId: string | null;
   name: string;
+  iconName: string | null;
+  iconColor: string | null;
   bookmarkCount: number;
 }
 
@@ -35,37 +38,57 @@ interface ActivePage {
 }
 
 type MessageTone = "error" | "neutral" | "success";
+type PopupScreen = "save" | "libraries" | "folders";
+type FolderNode = FolderItem & { children: FolderNode[] };
 
 const App = () => {
+  const [screen, setScreen] = createSignal<PopupScreen>("save");
   const [activePage, setActivePage] = createSignal<ActivePage | null>(null);
   const [currentUser, setCurrentUser] = createSignal<CurrentUserResponse | null>(null);
   const [folders, setFolders] = createSignal<FolderItem[]>([]);
   const [tags, setTags] = createSignal<TagItem[]>([]);
   const [selectedFolderId, setSelectedFolderId] = createSignal("");
   const [selectedTagIds, setSelectedTagIds] = createSignal<string[]>([]);
+  const [pickerLibraryId, setPickerLibraryId] = createSignal<string | null>(null);
+  const [expandedFolderIds, setExpandedFolderIds] = createSignal<ReadonlySet<string>>(new Set());
   const [isBusy, setIsBusy] = createSignal(false);
   const [message, setMessage] = createSignal("");
   const [messageTone, setMessageTone] = createSignal<MessageTone>("neutral");
   const [status, setStatus] = createSignal("");
   const [hasLoadedPage, setHasLoadedPage] = createSignal(false);
 
-  const isFolderSelectDisabled = createMemo(() => !currentUser() || folders().length === 0);
-  const saveDisabled = createMemo(() => isBusy() || !activePage() || isFolderSelectDisabled());
+  const isFolderSelectionDisabled = createMemo(() => !currentUser() || folders().length === 0);
+  const saveDisabled = createMemo(
+    () => isBusy() || !activePage() || !selectedFolderId() || isFolderSelectionDisabled()
+  );
 
-  const foldersByLibrary = createMemo(() => {
-    const grouped = new Map<string, FolderItem[]>();
+  const folderById = createMemo(() => new Map(folders().map((folder) => [folder.id, folder])));
+  const selectedFolder = createMemo(() => folderById().get(selectedFolderId()) ?? null);
+  const selectedFolderLabel = createMemo(() => {
+    const folder = selectedFolder();
 
-    for (const folder of folders()) {
-      grouped.set(folder.libraryId, [...(grouped.get(folder.libraryId) ?? []), folder]);
+    if (folder) {
+      return folderPath(folder, folders());
     }
 
-    return grouped;
+    return isFolderSelectionDisabled() ? "No folders found" : "Choose folder";
   });
 
-  const visibleTags = createMemo(() => {
-    const selectedFolder = folders().find((folder) => folder.id === selectedFolderId()) ?? null;
+  const folderTree = createMemo(() => buildFolderTree(folders()));
 
-    return selectedFolder ? tags().filter((tag) => tag.libraryId === selectedFolder.libraryId) : [];
+  const visibleTags = createMemo(() => {
+    const folder = selectedFolder();
+
+    return folder ? tags().filter((tag) => tag.libraryId === folder.libraryId) : [];
+  });
+
+  const selectedPickerLibrary = createMemo(
+    () => currentUser()?.libraries.find((library) => library.id === pickerLibraryId()) ?? null
+  );
+  const pickerRoots = createMemo(() => {
+    const libraryId = pickerLibraryId();
+
+    return libraryId ? folderTree().filter((folder) => folder.libraryId === libraryId) : [];
   });
 
   onMount(async () => {
@@ -92,6 +115,8 @@ const App = () => {
       setTags(tagResponse);
       setSelectedFolderId(userResponse.libraries[0]?.inboxFolderId ?? "");
       setSelectedTagIds([]);
+      setPickerLibraryId(userResponse.libraries[0]?.id ?? null);
+      setExpandedFolderIds(expandedAncestorIds(folderResponse, userResponse.libraries[0]?.inboxFolderId ?? ""));
       writeMessage("", "neutral");
       setStatus("Ready");
     } catch (error) {
@@ -100,6 +125,9 @@ const App = () => {
       setTags([]);
       setSelectedFolderId("");
       setSelectedTagIds([]);
+      setPickerLibraryId(null);
+      setExpandedFolderIds(new Set<string>());
+      setScreen("save");
       writeMessage(errorMessage(error), "error");
       setStatus("Offline");
     } finally {
@@ -144,139 +172,294 @@ const App = () => {
     );
   };
 
+  const openFolderPicker = () => {
+    if (isFolderSelectionDisabled()) {
+      return;
+    }
+
+    const folder = selectedFolder();
+    const firstLibrary = currentUser()?.libraries[0] ?? null;
+
+    setPickerLibraryId(folder?.libraryId ?? firstLibrary?.id ?? null);
+    setExpandedFolderIds(expandedAncestorIds(folders(), folder?.id ?? selectedFolderId()));
+    setScreen("libraries");
+  };
+
+  const chooseLibrary = (libraryId: string) => {
+    const folder = selectedFolder();
+
+    setPickerLibraryId(libraryId);
+    setExpandedFolderIds(
+      folder?.libraryId === libraryId ? expandedAncestorIds(folders(), folder.id) : new Set<string>()
+    );
+    setScreen("folders");
+  };
+
+  const chooseFolder = (folder: FolderItem) => {
+    setSelectedFolderId(folder.id);
+    setSelectedTagIds([]);
+    setScreen("save");
+  };
+
+  const drillIntoFolder = (folder: FolderItem) => {
+    setExpandedFolderIds((current) => {
+      const next = new Set(current);
+
+      if (next.has(folder.id)) {
+        next.delete(folder.id);
+      } else {
+        next.add(folder.id);
+      }
+
+      return next;
+    });
+  };
+
+  const closeFolderPicker = () => {
+    setScreen("save");
+  };
+
   const writeMessage = (text: string, tone: MessageTone) => {
     setMessage(text);
     setMessageTone(tone);
   };
 
   return (
-    <main class="popup-shell">
-      <header class="popup-header">
-        <div>
-          <p class="eyebrow">Bookmarks</p>
-          <h1>Save page</h1>
-        </div>
-        <div class="header-actions">
-          <button class="icon-button" type="button" title="Settings" onClick={() => void browser.runtime.openOptionsPage()}>
-            Settings
-          </button>
-          <Show when={status()}>
-            <div class="status-pill">{status()}</div>
-          </Show>
-        </div>
-      </header>
+    <Show when={screen() === "save"} fallback={renderFolderPicker()}>
+      <main class="popup-shell">
+        <header class="popup-header">
+          <div>
+            <p class="eyebrow">Bookmarks</p>
+            <h1>Save page</h1>
+          </div>
+          <div class="header-actions">
+            <button class="icon-button" type="button" title="Settings" onClick={() => void browser.runtime.openOptionsPage()}>
+              Settings
+            </button>
+            <Show when={status()}>
+              <div class="status-pill">{status()}</div>
+            </Show>
+          </div>
+        </header>
 
-      <section class="page-preview" aria-label="Current page">
-        <Show
-          when={hasLoadedPage()}
-          fallback={
-            <>
-              <p class="page-title">Loading current tab</p>
-              <p class="page-url"></p>
-            </>
-          }
-        >
+        <section class="page-preview" aria-label="Current page">
           <Show
-            when={activePage()}
+            when={hasLoadedPage()}
             fallback={
               <>
-                <p class="page-title">This page cannot be saved</p>
-                <p class="page-url">Open a regular http or https page first.</p>
+                <p class="page-title">Loading current tab</p>
+                <p class="page-url"></p>
               </>
             }
           >
-            {(page) => (
-              <>
-                <p class="page-title">{page().title}</p>
-                <p class="page-url">{page().url}</p>
-              </>
-            )}
-          </Show>
-        </Show>
-      </section>
-
-      <form
-        class="save-form"
-        onSubmit={(event) => {
-          event.preventDefault();
-          void saveBookmark();
-        }}
-      >
-        <label class="field">
-          <span>Folder</span>
-          <select
-            name="folderId"
-            value={selectedFolderId()}
-            disabled={isFolderSelectDisabled()}
-            onChange={(event) => {
-              setSelectedFolderId(event.currentTarget.value);
-              setSelectedTagIds([]);
-            }}
-          >
-            <Show when={!isFolderSelectDisabled()} fallback={<option value="">No folders found</option>}>
-              <For each={currentUser()?.libraries ?? []}>
-                {(library) => {
-                  const libraryFolders = foldersByLibrary().get(library.id) ?? [];
-
-                  return (
-                    <Show when={libraryFolders.length > 0}>
-                      <optgroup label={library.name}>
-                        <For each={sortFoldersForSelect(libraryFolders)}>
-                          {(folder) => <option value={folder.id}>{folderPath(folder, folders())}</option>}
-                        </For>
-                      </optgroup>
-                    </Show>
-                  );
-                }}
-              </For>
-            </Show>
-          </select>
-        </label>
-
-        <section class="field">
-          <div class="field-row">
-            <span>Tags</span>
-            <button
-              class="icon-button"
-              type="button"
-              title="Refresh folders and tags"
-              disabled={isBusy()}
-              onClick={() => void loadAppData()}
+            <Show
+              when={activePage()}
+              fallback={
+                <>
+                  <p class="page-title">This page cannot be saved</p>
+                  <p class="page-url">Open a regular http or https page first.</p>
+                </>
+              }
             >
-              Refresh
-            </button>
-          </div>
-          <div class="tag-list" aria-live="polite">
-            <Show when={visibleTags().length > 0} fallback={<p class="empty-state">No tags in this folder library</p>}>
-              <For each={visibleTags()}>
-                {(tag) => (
-                  <label class="tag-option">
-                    <input
-                      type="checkbox"
-                      name="tagIds"
-                      value={tag.id}
-                      checked={selectedTagIds().includes(tag.id)}
-                      onChange={(event) => toggleTag(tag.id, event.currentTarget.checked)}
-                    />
-                    <span>{tag.name}</span>
-                    <span class="tag-count">{tag.bookmarkCount}</span>
-                  </label>
-                )}
-              </For>
+              {(page) => (
+                <>
+                  <p class="page-title">{page().title}</p>
+                  <p class="page-url">{page().url}</p>
+                </>
+              )}
             </Show>
-          </div>
+          </Show>
         </section>
 
-        <p class="message" data-tone={messageTone()} role="status">
-          {message()}
-        </p>
+        <form
+          class="save-form"
+          onSubmit={(event) => {
+            event.preventDefault();
+            void saveBookmark();
+          }}
+        >
+          <label class="field">
+            <span>Folder</span>
+            <button
+              class="folder-trigger"
+              type="button"
+              disabled={isFolderSelectionDisabled()}
+              onClick={openFolderPicker}
+            >
+              <span class="folder-trigger-content">
+                <Show when={selectedFolder()}>
+                  {(folder) => (
+                    <TablerIcon
+                      color={folder().iconColor ?? DEFAULT_FOLDER_ICON_COLOR}
+                      name={folder().iconName}
+                      size={21}
+                    />
+                  )}
+                </Show>
+                <span>{selectedFolderLabel()}</span>
+              </span>
+              <span class="folder-trigger-icon">
+                <TablerIcon name="IconChevronRight" size={16} />
+              </span>
+            </button>
+          </label>
 
-        <button class="save-button" type="submit" disabled={saveDisabled()}>
-          Save bookmark
-        </button>
-      </form>
-    </main>
+          <section class="field">
+            <div class="field-row">
+              <span>Tags</span>
+              <button
+                class="icon-button"
+                type="button"
+                title="Refresh folders and tags"
+                disabled={isBusy()}
+                onClick={() => void loadAppData()}
+              >
+                Refresh
+              </button>
+            </div>
+            <div class="tag-list" aria-live="polite">
+              <Show when={visibleTags().length > 0} fallback={<p class="empty-state">No tags in this folder library</p>}>
+                <For each={visibleTags()}>
+                  {(tag) => (
+                    <label class="tag-option">
+                      <input
+                        type="checkbox"
+                        name="tagIds"
+                        value={tag.id}
+                        checked={selectedTagIds().includes(tag.id)}
+                        onChange={(event) => toggleTag(tag.id, event.currentTarget.checked)}
+                      />
+                      <span>{tag.name}</span>
+                      <span class="tag-count">{tag.bookmarkCount}</span>
+                    </label>
+                  )}
+                </For>
+              </Show>
+            </div>
+          </section>
+
+          <p class="message" data-tone={messageTone()} role="status">
+            {message()}
+          </p>
+
+          <button class="save-button" type="submit" disabled={saveDisabled()}>
+            Save bookmark
+          </button>
+        </form>
+      </main>
+    </Show>
   );
+
+  function renderFolderPicker() {
+    return (
+      <Show when={screen() === "libraries"} fallback={renderFolderTreePicker()}>
+        <main class="popup-shell folder-picker-shell">
+          <header class="popup-header">
+            <div>
+              <p class="eyebrow">Bookmarks</p>
+              <h1>Choose workspace</h1>
+            </div>
+            <button class="icon-button" type="button" onClick={closeFolderPicker}>
+              Done
+            </button>
+          </header>
+
+          <div class="folder-list" aria-live="polite">
+            <For each={currentUser()?.libraries ?? []}>
+              {(library) => {
+                const rootCount = folderTree().filter((folder) => folder.libraryId === library.id).length;
+
+                return (
+                  <button class="library-row" type="button" onClick={() => chooseLibrary(library.id)}>
+                    <span class="folder-row-label">
+                      <TablerIcon name="IconDatabase" size={21} />
+                      <span>
+                        <strong>{library.name}</strong>
+                        <small>{rootCount} folders</small>
+                      </span>
+                    </span>
+                    <span class="folder-trigger-icon">
+                      <TablerIcon name="IconChevronRight" size={16} />
+                    </span>
+                  </button>
+                );
+              }}
+            </For>
+          </div>
+        </main>
+      </Show>
+    );
+  }
+
+  function renderFolderTreePicker() {
+    return (
+      <main class="popup-shell folder-picker-shell">
+        <header class="popup-header">
+          <div>
+            <p class="eyebrow">Bookmarks</p>
+            <h1>Choose folder</h1>
+          </div>
+          <button class="icon-button" type="button" onClick={closeFolderPicker}>
+            Done
+          </button>
+        </header>
+
+        <section class="folder-location" aria-label="Folder location">
+          <button class="icon-button" type="button" onClick={() => setScreen("libraries")}>
+            Back
+          </button>
+          <p>{selectedPickerLibrary()?.name ?? "Workspace"}</p>
+        </section>
+
+        <div class="folder-list" aria-live="polite">
+          <Show
+            when={pickerRoots().length > 0}
+            fallback={<p class="empty-state">No folders in this workspace</p>}
+          >
+            <For each={pickerRoots()}>{(folder) => renderFolderNode(folder, 0)}</For>
+          </Show>
+        </div>
+      </main>
+    );
+  }
+
+  function renderFolderNode(folder: FolderNode, level: number) {
+    const hasChildren = folder.children.length > 0;
+    const isExpanded = () => expandedFolderIds().has(folder.id);
+    const isSelected = () => selectedFolderId() === folder.id;
+
+    return (
+      <>
+        <div class={["folder-tree-row", isSelected() ? "is-selected" : ""].join(" ")}>
+          <button
+            class="folder-disclosure-button"
+            type="button"
+            disabled={!hasChildren}
+            aria-expanded={hasChildren ? isExpanded() : undefined}
+            aria-label={`${isExpanded() ? "Collapse" : "Expand"} ${folder.name}`}
+            onClick={() => drillIntoFolder(folder)}
+          >
+            <Show when={hasChildren}>
+              <TablerIcon name={isExpanded() ? "IconChevronDown" : "IconChevronRight"} size={16} />
+            </Show>
+          </button>
+          <button
+            class="folder-tree-select-button"
+            type="button"
+            style={{ "padding-left": `${8 + level * 18}px` }}
+            onClick={() => chooseFolder(folder)}
+          >
+            <TablerIcon color={folder.iconColor ?? DEFAULT_FOLDER_ICON_COLOR} name={folder.iconName} size={21} />
+            <span>{folder.name}</span>
+          </button>
+          <span class="folder-count">{folder.bookmarkCount > 0 ? folder.bookmarkCount : null}</span>
+        </div>
+        <Show when={hasChildren && isExpanded()}>
+          <For each={folder.children}>{(child) => renderFolderNode(child, level + 1)}</For>
+        </Show>
+      </>
+    );
+  }
 };
 
 const getActivePage = async (): Promise<ActivePage | null> => {
@@ -292,10 +475,48 @@ const getActivePage = async (): Promise<ActivePage | null> => {
   };
 };
 
-const sortFoldersForSelect = (libraryFolders: FolderItem[]) =>
-  [...libraryFolders].sort((left, right) =>
-    folderPath(left, libraryFolders).localeCompare(folderPath(right, libraryFolders))
-  );
+const buildFolderTree = (folders: FolderItem[]): FolderNode[] => {
+  const nodes = new Map<string, FolderNode>();
+
+  for (const folder of folders) {
+    nodes.set(folder.id, { ...folder, children: [] });
+  }
+
+  const roots: FolderNode[] = [];
+
+  for (const node of nodes.values()) {
+    const parent = node.parentId ? nodes.get(node.parentId) : null;
+
+    if (parent) {
+      parent.children.push(node);
+    } else {
+      roots.push(node);
+    }
+  }
+
+  return sortFolderNodes(roots);
+};
+
+const sortFolderNodes = (nodes: FolderNode[]): FolderNode[] =>
+  nodes
+    .sort((left, right) => left.name.localeCompare(right.name))
+    .map((node) => ({
+      ...node,
+      children: sortFolderNodes(node.children)
+    }));
+
+const expandedAncestorIds = (folders: FolderItem[], folderId: string) => {
+  const folderById = new Map(folders.map((folder) => [folder.id, folder]));
+  const ids = new Set<string>();
+  let parentId = folderById.get(folderId)?.parentId ?? null;
+
+  while (parentId) {
+    ids.add(parentId);
+    parentId = folderById.get(parentId)?.parentId ?? null;
+  }
+
+  return ids;
+};
 
 const folderPath = (folder: FolderItem, allFolders: FolderItem[]) => {
   const path = [folder.name];
