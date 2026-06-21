@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, test } from "bun:test";
-import type { BookmarkItem, FolderItem } from "@bookmarks/shared";
+import type { BookmarkItem, FolderItem, TagItem } from "@bookmarks/shared";
 import { cleanup, fireEvent, render, waitFor } from "@testing-library/react";
 import { Window } from "happy-dom";
 
@@ -108,6 +108,17 @@ describe("App", () => {
         updatedAt: "2026-06-19T12:00:00.000Z"
       }
     ];
+    const tags: TagItem[] = [
+      {
+        id: "00000000-0000-4000-8000-000000000030",
+        libraryId: "00000000-0000-4000-8000-000000000003",
+        name: "Important",
+        color: "#16a34a",
+        bookmarkCount: 1,
+        createdAt: "2026-06-19T12:00:00.000Z",
+        updatedAt: "2026-06-19T12:00:00.000Z"
+      }
+    ];
     let finishCreate = () => {};
     const copiedLinks: string[] = [];
     const openedLinks: string[] = [];
@@ -204,13 +215,19 @@ describe("App", () => {
 
       if (url.pathname === "/rpc/bookmarks/list") {
         const body = (await request.json()) as {
-          json?: { folderId?: string | null; inbox?: boolean };
+          json?: { folderId?: string | null; inbox?: boolean; tagId?: string | null };
         };
-        const items = body.json?.inbox
-          ? savedItems.filter((item) => item.folderId === null)
-          : body.json?.folderId
-            ? savedItems.filter((item) => item.folderId === body.json?.folderId)
-            : savedItems;
+        const tagBookmarks =
+          body.json?.tagId === "00000000-0000-4000-8000-000000000030"
+            ? new Set(["00000000-0000-4000-8000-000000000010"])
+            : null;
+        const items = (
+          body.json?.inbox
+            ? savedItems.filter((item) => item.folderId === null)
+            : body.json?.folderId
+              ? savedItems.filter((item) => item.folderId === body.json?.folderId)
+              : savedItems
+        ).filter((item) => (tagBookmarks ? tagBookmarks.has(item.id) : true));
 
         return new Response(
           JSON.stringify({
@@ -238,6 +255,45 @@ describe("App", () => {
             }
           }
         );
+      }
+
+      if (url.pathname === "/rpc/tags/list") {
+        return new Response(
+          JSON.stringify({
+            json: tags
+          }),
+          {
+            headers: {
+              "content-type": "application/json"
+            }
+          }
+        );
+      }
+
+      if (url.pathname === "/rpc/tags/create") {
+        const body = (await request.json()) as {
+          json?: {
+            color?: string | null;
+            libraryId?: string;
+            name?: string;
+          };
+        };
+        const tag = {
+          id: "00000000-0000-4000-8000-000000000031",
+          libraryId: body.json?.libraryId || "00000000-0000-4000-8000-000000000003",
+          name: body.json?.name || "Important",
+          color: body.json?.color ?? null,
+          bookmarkCount: 0,
+          createdAt: "2026-06-20T12:00:00.000Z",
+          updatedAt: "2026-06-20T12:00:00.000Z"
+        } satisfies TagItem;
+        tags.push(tag);
+
+        return new Response(JSON.stringify({ json: tag }), {
+          headers: {
+            "content-type": "application/json"
+          }
+        });
       }
 
       if (url.pathname === "/rpc/folders/create") {
@@ -308,7 +364,9 @@ describe("App", () => {
       }
 
       if (url.pathname === "/rpc/bookmarks/create") {
-        const body = (await request.json()) as { json?: { folderId?: string; url?: string } };
+        const body = (await request.json()) as {
+          json?: { folderId?: string; tagIds?: string[]; url?: string };
+        };
         const targetFolder = body.json?.folderId
           ? (folders.find((folder) => folder.id === body.json?.folderId) ?? null)
           : null;
@@ -342,6 +400,17 @@ describe("App", () => {
             bookmarkCount: folders[folderIndex].bookmarkCount + 1,
             updatedAt: "2026-06-20T12:00:00.000Z"
           };
+        }
+        for (const tagId of body.json?.tagIds ?? []) {
+          const tagIndex = tags.findIndex((tag) => tag.id === tagId);
+
+          if (tagIndex >= 0) {
+            tags[tagIndex] = {
+              ...tags[tagIndex],
+              bookmarkCount: tags[tagIndex].bookmarkCount + 1,
+              updatedAt: "2026-06-20T12:00:00.000Z"
+            };
+          }
         }
 
         return new Response(JSON.stringify({ json: savedItem }), {
@@ -575,6 +644,8 @@ describe("App", () => {
       expect(screen.getByRole("img", { name: "No thumbnail available" })).toBeTruthy();
       expect(screen.getByRole("button", { name: "Folder actions for Research" })).toBeTruthy();
       expect(screen.getByRole("button", { name: "Archive" })).toBeTruthy();
+      expect(screen.getByLabelText("Personal tags")).toBeTruthy();
+      expect(screen.getByRole("button", { name: "Important" })).toBeTruthy();
       expect(screen.queryByLabelText("Bookmark folder Inbox")).toBeNull();
     });
     const rootDropZone = screen.container.querySelector("[data-folder-root-drop-zone]");
@@ -603,6 +674,18 @@ describe("App", () => {
     expect(screen.getByRole("heading", { name: "Research / Archive" })).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: "Inbox" }));
     expect(screen.getByRole("heading", { name: "Inbox" })).toBeTruthy();
+
+    fireEvent.click(screen.getByRole("button", { name: "Important" }));
+    await waitFor(() => {
+      expect(screen.getByRole("heading", { name: "Important" })).toBeTruthy();
+      expect(screen.getByText("Example Article")).toBeTruthy();
+      expect(screen.queryByText("Plain Bookmark")).toBeNull();
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Inbox" }));
+    await waitFor(() => {
+      expect(screen.getByRole("heading", { name: "Inbox" })).toBeTruthy();
+      expect(screen.getByText("Plain Bookmark")).toBeTruthy();
+    });
 
     Object.defineProperty(window, "innerWidth", { configurable: true, value: 420 });
     window.dispatchEvent(new window.Event("resize"));
@@ -764,6 +847,26 @@ describe("App", () => {
     });
 
     fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
+
+    fireEvent.click(screen.getByRole("button", { name: "Create tag in Personal" }));
+    await waitFor(() => {
+      expect(screen.getByLabelText("Tag name")).toBeTruthy();
+    });
+    const tagNameInput = screen.getByLabelText("Tag name");
+    expect(tagNameInput.hasAttribute("required")).toBe(false);
+    fireEvent.click(screen.getByRole("button", { name: "Create tag" }));
+    await waitFor(() => {
+      expect(tagNameInput.getAttribute("aria-invalid")).toBe("true");
+    });
+    fireEvent.change(tagNameInput, { target: { value: "Important 2" } });
+    fireEvent.input(tagNameInput, { target: { value: "Important 2" } });
+    fireEvent.click(screen.getByRole("button", { name: "Select tag color #f59e0b" }));
+    fireEvent.click(screen.getByRole("button", { name: "Create tag" }));
+    await waitFor(() => {
+      expect(screen.getByRole("button", { name: "Important 2" })).toBeTruthy();
+      expect(screen.getByRole("heading", { name: "Important 2" })).toBeTruthy();
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Inbox" }));
 
     expect(screen.queryByRole("dialog", { name: "Add bookmark" })).toBeNull();
 

@@ -2,11 +2,13 @@ import { type FormEvent, useRef, useState } from "react";
 import { Dialog } from "@base-ui/react/dialog";
 import type { InfiniteData } from "@tanstack/react-query";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import type { BookmarkItem, BookmarksPageResponse, FolderItem } from "@bookmarks/shared";
+import type { BookmarkItem, BookmarksPageResponse, FolderItem, TagItem } from "@bookmarks/shared";
 import { IconX } from "@tabler/icons-react";
 import { createBookmark } from "../../api";
 import {
+  bookmarkQueryKey,
   bookmarkQueryKeysForFolder,
+  bookmarkQueryKeysForTag,
   insertBookmarkIntoPages,
   isValidBookmarkUrl
 } from "./bookmarkUtils";
@@ -14,12 +16,18 @@ import {
 export const AddBookmarkDialog = ({
   isOpen,
   targetFolder,
+  targetTagId,
+  tags,
   visibleFolderId,
+  visibleTagId,
   onOpenChange
 }: {
   isOpen: boolean;
   targetFolder: FolderItem | null;
+  targetTagId: string | null;
+  tags: TagItem[];
   visibleFolderId: string | null;
+  visibleTagId: string | null;
   onOpenChange: (open: boolean) => void;
 }) => {
   const formRef = useRef<HTMLFormElement | null>(null);
@@ -39,7 +47,8 @@ export const AddBookmarkDialog = ({
 
       await Promise.all([
         queryClient.cancelQueries({ queryKey: ["bookmarks"] }),
-        queryClient.cancelQueries({ queryKey: ["folders"] })
+        queryClient.cancelQueries({ queryKey: ["folders"] }),
+        queryClient.cancelQueries({ queryKey: ["tags"] })
       ]);
 
       const bookmarkQueryKeys = bookmarkQueryKeysForFolder(optimisticFolder.id);
@@ -49,6 +58,7 @@ export const AddBookmarkDialog = ({
         queryKey
       }));
       const previousFolders = queryClient.getQueryData<FolderItem[]>(["folders"]);
+      const previousTags = queryClient.getQueryData<TagItem[]>(["tags"]);
       const now = new Date().toISOString();
       const optimisticBookmark: BookmarkItem = {
         id: `optimistic-${crypto.randomUUID()}`,
@@ -82,10 +92,23 @@ export const AddBookmarkDialog = ({
         )
       );
 
+      if (input.tagIds.length > 0) {
+        const selectedTagIds = new Set(input.tagIds);
+
+        queryClient.setQueryData<TagItem[]>(["tags"], (currentTags = []) =>
+          currentTags.map((tag) =>
+            selectedTagIds.has(tag.id)
+              ? { ...tag, bookmarkCount: tag.bookmarkCount + 1, updatedAt: now }
+              : tag
+          )
+        );
+      }
+
       return {
         optimisticBookmarkId: optimisticBookmark.id,
         previousBookmarks,
         previousFolders,
+        previousTags,
         targetFolderId: optimisticFolder.id
       };
     },
@@ -101,11 +124,22 @@ export const AddBookmarkDialog = ({
       if (context?.previousFolders) {
         queryClient.setQueryData(["folders"], context.previousFolders);
       }
+
+      if (context?.previousTags) {
+        queryClient.setQueryData(["tags"], context.previousTags);
+      }
     },
     onSuccess: (bookmark, _input, context) => {
-      if (!visibleFolderId || bookmark.folderId === visibleFolderId) {
+      if (!visibleTagId && (!visibleFolderId || bookmark.folderId === visibleFolderId)) {
         queryClient.setQueryData<InfiniteData<BookmarksPageResponse, string | null>>(
-          ["bookmarks", visibleFolderId],
+          bookmarkQueryKey({ folderId: visibleFolderId, tagId: null }),
+          (data) => insertBookmarkIntoPages(data, bookmark, context?.optimisticBookmarkId)
+        );
+      }
+
+      if (visibleTagId && _input.tagIds.includes(visibleTagId)) {
+        queryClient.setQueryData<InfiniteData<BookmarksPageResponse, string | null>>(
+          bookmarkQueryKey({ folderId: null, tagId: visibleTagId }),
           (data) => insertBookmarkIntoPages(data, bookmark, context?.optimisticBookmarkId)
         );
       }
@@ -128,13 +162,26 @@ export const AddBookmarkDialog = ({
         }
       }
 
-      void queryClient.invalidateQueries({ queryKey: ["bookmarks", null], exact: true });
+      void queryClient.invalidateQueries({
+        exact: true,
+        queryKey: bookmarkQueryKey({ folderId: null, tagId: null })
+      });
 
       if (targetFolderId) {
-        void queryClient.invalidateQueries({ queryKey: ["bookmarks", targetFolderId], exact: true });
+        void queryClient.invalidateQueries({
+          exact: true,
+          queryKey: bookmarkQueryKey({ folderId: targetFolderId, tagId: null })
+        });
+      }
+
+      for (const tagId of input.tagIds) {
+        for (const queryKey of bookmarkQueryKeysForTag(tagId)) {
+          void queryClient.invalidateQueries({ exact: true, queryKey });
+        }
       }
 
       void queryClient.invalidateQueries({ queryKey: ["folders"] });
+      void queryClient.invalidateQueries({ queryKey: ["tags"] });
     }
   });
 
@@ -151,8 +198,22 @@ export const AddBookmarkDialog = ({
       return;
     }
 
-    addBookmark.mutate({ folderId: targetFolder?.id, optimisticFolder: targetFolder, url });
+    const tagIds = formData
+      .getAll("tagIds")
+      .map((tagId) => String(tagId))
+      .filter(Boolean);
+
+    addBookmark.mutate({
+      folderId: targetFolder?.id,
+      optimisticFolder: targetFolder,
+      tagIds,
+      url
+    });
   };
+
+  const visibleTags = targetFolder
+    ? tags.filter((tag) => tag.libraryId === targetFolder.libraryId)
+    : tags;
 
   return (
     <Dialog.Root
@@ -219,6 +280,33 @@ export const AddBookmarkDialog = ({
                   }}
                 />
               </label>
+              {visibleTags.length > 0 ? (
+                <fieldset className="grid gap-2 rounded-lg border border-[#dfe4ef] p-3">
+                  <legend className="px-1 text-sm font-bold text-[#242833]">Tags</legend>
+                  <div className="flex flex-wrap gap-2">
+                    {visibleTags.map((tag) => (
+                      <label
+                        className="flex min-h-8 items-center gap-2 rounded-lg border border-[#dfe4ef] bg-white px-2 text-sm font-bold text-[#4b5262]"
+                        key={tag.id}
+                      >
+                        <input
+                          className="h-4 w-4 accent-[#3b8df5]"
+                          defaultChecked={tag.id === targetTagId}
+                          name="tagIds"
+                          type="checkbox"
+                          value={tag.id}
+                        />
+                        <span
+                          className="h-2.5 w-2.5 shrink-0 rounded-full"
+                          style={{ backgroundColor: tag.color ?? "#697080" }}
+                          aria-hidden="true"
+                        />
+                        <span>{tag.name}</span>
+                      </label>
+                    ))}
+                  </div>
+                </fieldset>
+              ) : null}
               {addBookmark.isError ? (
                 <p className="m-0 rounded-lg border border-[#f0b37e] bg-[#fff8f1] px-3 py-2 text-sm font-bold text-[#9a4d0a]">
                   Bookmark could not be saved.
@@ -251,5 +339,6 @@ export const AddBookmarkDialog = ({
 type AddBookmarkMutationInput = {
   folderId?: string;
   optimisticFolder: FolderItem | null;
+  tagIds: string[];
   url: string;
 };

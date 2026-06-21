@@ -1,5 +1,6 @@
 export * from "./createBookmark";
 export * from "./createFolder";
+export * from "./createTag";
 export * from "./cursor";
 export * from "./deleteBookmark";
 export * from "./deleteFolder";

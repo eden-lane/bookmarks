@@ -11,6 +11,7 @@ export interface ListBookmarksInput {
   limit: number;
   folderId?: string;
   inbox?: boolean;
+  tagId?: string;
   cursor?: BookmarkCursor;
 }
 
@@ -44,6 +45,13 @@ export interface ListFoldersInput {
 
 export interface ListTagsInput {
   libraryIds: string[];
+}
+
+export interface CreateTagInput {
+  libraryId: string;
+  allowedLibraryIds: string[];
+  name: string;
+  color?: string | null;
 }
 
 export interface CreateFolderInput {
@@ -89,6 +97,7 @@ export interface BookmarksStore {
   getFavicon(id: string): Promise<{ contentType: string; imageBytes: Buffer } | null>;
   listFolders(input: ListFoldersInput): Promise<FolderItem[]>;
   listTags(input: ListTagsInput): Promise<TagItem[]>;
+  createTag(input: CreateTagInput): Promise<TagItem>;
   createFolder(input: CreateFolderInput): Promise<FolderItem>;
   updateFolder(input: UpdateFolderInput): Promise<FolderItem>;
   moveFolder(input: MoveFolderInput): Promise<FolderItem[]>;

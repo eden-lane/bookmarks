@@ -53,6 +53,9 @@ const createBookmarksStore = (overrides: Partial<BookmarksStore>): BookmarksStor
   async createFolder() {
     throw new Error("not used");
   },
+  async createTag() {
+    throw new Error("not used");
+  },
   async deleteBookmark() {
     throw new Error("not used");
   },
@@ -214,7 +217,8 @@ describe("bookmarks RPC", () => {
       folderId: undefined,
       inbox: false,
       libraryIds: [DEV_PERSONAL_LIBRARY_ID],
-      limit: 1
+      limit: 1,
+      tagId: undefined
     });
   });
 
@@ -388,6 +392,7 @@ describe("bookmarks RPC", () => {
               id: "00000000-0000-4000-8000-000000000030",
               libraryId: DEV_PERSONAL_LIBRARY_ID,
               name: "Research",
+              color: "#3b82f6",
               bookmarkCount: 0,
               createdAt: "2026-06-20T12:00:00.000Z",
               updatedAt: "2026-06-20T12:00:00.000Z"
@@ -762,6 +767,7 @@ describe("tags RPC", () => {
               id: "00000000-0000-4000-8000-000000000030",
               libraryId: DEV_PERSONAL_LIBRARY_ID,
               name: "Research",
+              color: "#16a34a",
               bookmarkCount: 2,
               createdAt: "2026-06-20T12:00:00.000Z",
               updatedAt: "2026-06-20T12:00:00.000Z"
@@ -786,6 +792,58 @@ describe("tags RPC", () => {
     expect(body.json[0].name).toBe("Research");
     expect(calls[0]).toEqual({
       libraryIds: [DEV_PERSONAL_LIBRARY_ID]
+    });
+  });
+
+  test("creates a tag with the current user's allowed libraries", async () => {
+    const calls: Parameters<BookmarksStore["createTag"]>[0][] = [];
+    const app = createApp({
+      bookmarksStore: createBookmarksStore({
+        async createTag(input) {
+          calls.push(input);
+
+          return {
+            id: "00000000-0000-4000-8000-000000000031",
+            libraryId: input.libraryId,
+            name: input.name,
+            color: input.color ?? null,
+            bookmarkCount: 0,
+            createdAt: "2026-06-20T12:00:00.000Z",
+            updatedAt: "2026-06-20T12:00:00.000Z"
+          };
+        }
+      }),
+      currentUser,
+      dependencies: dependencies()
+    });
+
+    const response = await app.request("/rpc/tags/create", {
+      body: JSON.stringify({
+        json: {
+          libraryId: DEV_PERSONAL_LIBRARY_ID,
+          color: "#3B82F6",
+          name: " Research "
+        }
+      }),
+      headers: {
+        "content-type": "application/json"
+      },
+      method: "POST"
+    });
+    const body = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(body.json).toMatchObject({
+      libraryId: DEV_PERSONAL_LIBRARY_ID,
+      name: "Research",
+      color: "#3b82f6",
+      bookmarkCount: 0
+    });
+    expect(calls[0]).toEqual({
+      allowedLibraryIds: [DEV_PERSONAL_LIBRARY_ID],
+      libraryId: DEV_PERSONAL_LIBRARY_ID,
+      color: "#3b82f6",
+      name: "Research"
     });
   });
 });

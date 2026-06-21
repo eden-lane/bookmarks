@@ -1,6 +1,11 @@
 import type { InfiniteData } from "@tanstack/react-query";
 import type { BookmarkItem, BookmarksPageResponse } from "@bookmarks/shared";
 
+export type BookmarkFilter = {
+  folderId: string | null;
+  tagId: string | null;
+};
+
 export const copyBookmarkLink = async (url: string) => {
   if (navigator.clipboard?.writeText) {
     await navigator.clipboard.writeText(url);
@@ -93,7 +98,18 @@ export const removeBookmarksFromPages = (
   };
 };
 
+export const bookmarkQueryKey = (filter: BookmarkFilter): ["bookmarks", BookmarkFilter] => [
+  "bookmarks",
+  filter
+];
+
 export const bookmarkQueryKeysForFolder = (
   folderId: string | null
-): Array<["bookmarks", string | null]> =>
-  folderId ? [["bookmarks", folderId]] : [["bookmarks", null]];
+): Array<["bookmarks", BookmarkFilter]> =>
+  folderId
+    ? [bookmarkQueryKey({ folderId, tagId: null })]
+    : [bookmarkQueryKey({ folderId: null, tagId: null })];
+
+export const bookmarkQueryKeysForTag = (tagId: string): Array<["bookmarks", BookmarkFilter]> => [
+  bookmarkQueryKey({ folderId: null, tagId })
+];

@@ -1,5 +1,5 @@
 import type { BookmarksPageResponse } from "@bookmarks/shared";
-import { and, desc, eq, inArray, isNull, lt, or, type SQL } from "drizzle-orm";
+import { and, desc, eq, inArray, isNull, lt, or, sql, type SQL } from "drizzle-orm";
 import type { Database } from "../db";
 import { schema } from "../db";
 import { bookmarkSelectFields, serializeBookmark } from "./bookmarkRows";
@@ -20,6 +20,16 @@ export const listBookmarks = async (db: Database, input: ListBookmarksInput) => 
     filters.push(eq(schema.savedItems.folderId, input.folderId));
   } else if (input.inbox) {
     filters.push(isNull(schema.savedItems.folderId));
+  }
+
+  if (input.tagId) {
+    filters.push(sql`exists (
+      select 1
+      from ${schema.savedItemTags}
+      where ${schema.savedItemTags.savedItemId} = ${schema.savedItems.id}
+        and ${schema.savedItemTags.libraryId} = ${schema.savedItems.libraryId}
+        and ${schema.savedItemTags.tagId} = ${input.tagId}
+    )`);
   }
 
   if (input.cursor) {

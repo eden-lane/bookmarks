@@ -14,7 +14,8 @@ import type {
   BookmarkItem,
   BookmarksPageResponse,
   FolderItem,
-  MoveFolderInput
+  MoveFolderInput,
+  TagItem
 } from "@bookmarks/shared";
 import {
   IconBookmark,
@@ -22,12 +23,14 @@ import {
   IconGripVertical,
   IconLayoutSidebarLeftExpand,
   IconLogout2,
-  IconPhoto
+  IconPhoto,
+  IconTag
 } from "@tabler/icons-react";
 import {
   apiAssetUrl,
   getCurrentUser,
   getFolders,
+  getTags,
   logout,
   moveFolder as moveFolderRequest,
   moveBookmarks as moveBookmarksRequest
@@ -35,6 +38,7 @@ import {
 import { AddBookmarkDialog } from "../features/bookmarks/AddBookmarkDialog";
 import { BookmarksWorkspace } from "../features/bookmarks/BookmarksWorkspace";
 import {
+  bookmarkQueryKey,
   bookmarkQueryKeysForFolder,
   hostFromUrl,
   insertBookmarkIntoPages,
@@ -65,6 +69,7 @@ export const ProductShell = () => {
   const sidebarScrollRef = useRef<HTMLDivElement | null>(null);
   const sidebarTouchStartRef = useRef<SidebarTouchState | null>(null);
   const [activeFolderId, setActiveFolderId] = useState<string | null>(null);
+  const [activeTagId, setActiveTagId] = useState<string | null>(null);
   const [bookmarkDialogOpen, setBookmarkDialogOpen] = useState(false);
   const [bookmarkTargetFolder, setBookmarkTargetFolder] = useState<FolderItem | null>(null);
   const [isSidebarVisible, setIsSidebarVisible] = useState(() => !isStackedSidebarViewport());
@@ -89,6 +94,11 @@ export const ProductShell = () => {
     queryKey: ["folders"],
     queryFn: getFolders
   });
+  const tags = useQuery({
+    enabled: currentUser.isSuccess,
+    queryKey: ["tags"],
+    queryFn: getTags
+  });
   const logoutMutation = useMutation({
     mutationFn: logout,
     onSuccess: async () => {
@@ -96,6 +106,7 @@ export const ProductShell = () => {
     }
   });
   const activeFolder = folders.data?.find((folder) => folder.id === activeFolderId) ?? null;
+  const activeTag = tags.data?.find((tag) => tag.id === activeTagId) ?? null;
   const activeFolderDragItem =
     folders.data?.find((folder) => folder.id === activeFolderDragId) ?? null;
   const activeFolderPath = activeFolder ? folderPathSegments(activeFolder, folders.data ?? []) : [];
@@ -219,7 +230,7 @@ export const ProductShell = () => {
       const destinationFolderId = input.destinationFolder?.id ?? null;
       void queryClient.invalidateQueries({
         exact: true,
-        queryKey: ["bookmarks", destinationFolderId]
+        queryKey: bookmarkQueryKey({ folderId: destinationFolderId, tagId: null })
       });
     }
   });
@@ -375,6 +386,16 @@ export const ProductShell = () => {
 
   const selectFolder = (folderId: string | null) => {
     setActiveFolderId(folderId);
+    setActiveTagId(null);
+
+    if (isStackedSidebar) {
+      setIsSidebarVisible(false);
+    }
+  };
+
+  const selectTag = (tagId: string) => {
+    setActiveTagId(tagId);
+    setActiveFolderId(null);
 
     if (isStackedSidebar) {
       setIsSidebarVisible(false);
@@ -539,14 +560,19 @@ export const ProductShell = () => {
         >
           <FolderSidebar
             activeFolderId={activeFolderId}
+            activeTagId={activeTagId}
             currentUser={currentUser.data}
             folders={folders.data ?? []}
             isError={folders.isError}
             isLoading={folders.isLoading}
+            isTagsError={tags.isError}
+            isTagsLoading={tags.isLoading}
+            tags={tags.data ?? []}
             activeFolderDragId={activeFolderDragId}
             onAddBookmark={openBookmarkDialog}
             onHideSidebar={() => setIsSidebarVisible(false)}
             onSelectFolder={selectFolder}
+            onSelectTag={selectTag}
           />
         </div>
       </aside>
@@ -580,7 +606,11 @@ export const ProductShell = () => {
             </button>
           ) : null}
           <div className="min-w-0">
-            <FolderBreadcrumbs folders={activeFolderPath} />
+            {activeTag ? (
+              <TagBreadcrumb tag={activeTag} />
+            ) : (
+              <FolderBreadcrumbs folders={activeFolderPath} />
+            )}
           </div>
           <button
             className="grid h-10 w-10 shrink-0 place-items-center rounded-xl border border-gray-200 bg-white text-slate-950 outline-none hover:bg-gray-100 disabled:cursor-not-allowed disabled:text-gray-300 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-500"
@@ -594,12 +624,20 @@ export const ProductShell = () => {
           </button>
         </header>
 
-        <BookmarksWorkspace folderId={activeFolderId} folderName={activeFolder?.name ?? null} />
+        <BookmarksWorkspace
+          folderId={activeFolderId}
+          folderName={activeFolder?.name ?? null}
+          tagId={activeTagId}
+          tagName={activeTag?.name ?? null}
+        />
       </section>
       <AddBookmarkDialog
         isOpen={bookmarkDialogOpen}
         targetFolder={bookmarkTargetFolder}
+        targetTagId={activeTagId}
+        tags={tags.data ?? []}
         visibleFolderId={activeFolderId}
+        visibleTagId={activeTagId}
         onOpenChange={setBookmarkDialogOpen}
       />
       {moveNotification ? (
@@ -977,6 +1015,33 @@ const FolderBreadcrumbs = ({ folders }: { folders: FolderItem[] }) => {
     </h1>
   );
 };
+
+const TagBreadcrumb = ({ tag }: { tag: TagItem }) => (
+  <h1
+    className="m-0 flex min-w-0 flex-wrap items-center gap-x-1 gap-y-0.5 text-[15px] leading-5 font-semibold"
+    aria-label={tag.name}
+  >
+    <IconDatabase
+      className="shrink-0 text-gray-500"
+      size={16}
+      stroke={1.5}
+      aria-hidden="true"
+      focusable="false"
+    />
+    <BreadcrumbSeparator />
+    <span className="inline-flex min-w-0 items-center gap-1">
+      <IconTag
+        className="shrink-0"
+        size={16}
+        stroke={1.5}
+        color={tag.color ?? "#697080"}
+        aria-hidden="true"
+        focusable="false"
+      />
+      <span className="min-w-0 truncate">{tag.name}</span>
+    </span>
+  </h1>
+);
 
 const BreadcrumbFolder = ({ folder, isLast }: { folder: FolderItem; isLast: boolean }) => {
   const FolderIcon = getFolderIconComponent(folder.iconName);

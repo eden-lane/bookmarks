@@ -5,6 +5,7 @@ import type {
   BookmarksPageResponse,
   CreateBookmarkInput,
   CreateFolderInput,
+  CreateTagInput,
   DeleteBookmarkInput,
   CurrentUserResponse,
   DeleteFolderInput,
@@ -13,6 +14,7 @@ import type {
   ListBookmarksInput,
   MoveFolderInput,
   MoveBookmarksInput,
+  TagItem,
   UpdateFolderInput
 } from "@bookmarks/shared";
 import { createORPCClient, type Client, type NestedClient } from "@orpc/client";
@@ -37,6 +39,7 @@ interface WebRpcClient extends Record<string, NestedClient<Record<never, never>>
   currentUser: RpcProcedure<undefined, CurrentUserResponse>;
   bookmarks: BookmarksRpcClient;
   folders: FoldersRpcClient;
+  tags: TagsRpcClient;
 }
 
 interface BookmarksRpcClient extends Record<string, NestedClient<Record<never, never>>> {
@@ -55,6 +58,11 @@ interface FoldersRpcClient extends Record<string, NestedClient<Record<never, nev
   list: RpcProcedure<undefined, FolderItem[]>;
   move: RpcProcedure<MoveFolderInput, FolderItem[]>;
   update: RpcProcedure<UpdateFolderInput, FolderItem>;
+}
+
+interface TagsRpcClient extends Record<string, NestedClient<Record<never, never>>> {
+  create: RpcProcedure<CreateTagInput, TagItem>;
+  list: RpcProcedure<undefined, TagItem[]>;
 }
 
 export const getHealth = async (): Promise<HealthResponse> => rpc.health();
@@ -110,18 +118,21 @@ export const getBookmarks = async ({
   cursor,
   folderId,
   inbox,
-  limit = 20
+  limit = 20,
+  tagId
 }: {
   cursor?: string | null;
   folderId?: string | null;
   inbox?: boolean;
   limit?: number;
+  tagId?: string | null;
 } = {}): Promise<BookmarksPageResponse> => {
   return rpc.bookmarks.list({
     cursor,
     folderId,
     inbox,
-    limit
+    limit,
+    tagId
   });
 };
 
@@ -139,8 +150,12 @@ export const moveBookmarks = async (
 
 export const getFolders = async (): Promise<FolderItem[]> => rpc.folders.list();
 
+export const getTags = async (): Promise<TagItem[]> => rpc.tags.list();
+
 export const createFolder = async (input: CreateFolderInput): Promise<FolderItem> =>
   rpc.folders.create(input);
+
+export const createTag = async (input: CreateTagInput): Promise<TagItem> => rpc.tags.create(input);
 
 export const moveFolder = async (input: MoveFolderInput): Promise<FolderItem[]> =>
   rpc.folders.move(input);

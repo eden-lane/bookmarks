@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useDroppable } from "@dnd-kit/core";
-import type { CurrentUserResponse, FolderItem } from "@bookmarks/shared";
+import type { CurrentUserResponse, FolderItem, TagItem } from "@bookmarks/shared";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   IconBookmark,
@@ -10,11 +10,14 @@ import {
   IconFolderPlus,
   IconLayoutSidebarLeftCollapse,
   IconPlus,
-  IconSearch
+  IconSearch,
+  IconTag,
+  IconTagPlus
 } from "@tabler/icons-react";
-import { createFolder, updateFolder } from "../../api";
+import { createFolder, createTag, updateFolder } from "../../api";
 import { usePersistedStringSet } from "../../hooks/usePersistedStringSet";
 import { FOLDER_CONTEXT_MENU_SIZE, clampContextMenuPosition } from "../../utils/contextMenu";
+import { InlineTagForm } from "../tags/InlineTagForm";
 import { DeleteFolderDialog } from "./DeleteFolderDialog";
 import { FolderContextMenu } from "./FolderContextMenu";
 import { FolderDisclosurePlaceholder } from "./FolderDisclosureControls";
@@ -30,29 +33,40 @@ const COLLAPSED_FOLDERS_STORAGE_KEY = "bookmarks.collapsedFolders";
 export const FolderSidebar = ({
   activeFolderId,
   activeFolderDragId,
+  activeTagId,
   currentUser,
   folders,
   isError,
   isLoading,
+  isTagsError,
+  isTagsLoading,
+  tags,
   onAddBookmark,
   onHideSidebar,
-  onSelectFolder
+  onSelectFolder,
+  onSelectTag
 }: {
   activeFolderId: string | null;
   activeFolderDragId: string | null;
+  activeTagId: string | null;
   currentUser?: CurrentUserResponse;
   folders: FolderItem[];
   isError: boolean;
   isLoading: boolean;
+  isTagsError: boolean;
+  isTagsLoading: boolean;
+  tags: TagItem[];
   onAddBookmark: (folder: FolderItem | null) => void;
   onHideSidebar: () => void;
   onSelectFolder: (folderId: string | null) => void;
+  onSelectTag: (tagId: string) => void;
 }) => {
   const queryClient = useQueryClient();
   const [creatingTarget, setCreatingTarget] = useState<{
     libraryId: string;
     parentId: string | null;
   } | null>(null);
+  const [creatingTagLibraryId, setCreatingTagLibraryId] = useState<string | null>(null);
   const [editingFolderId, setEditingFolderId] = useState<string | null>(null);
   const [menu, setMenu] = useState<{ folderId: string; x: number; y: number } | null>(null);
   const [folderToDelete, setFolderToDelete] = useState<FolderItem | null>(null);
@@ -84,6 +98,19 @@ export const FolderSidebar = ({
       setCreatingTarget(null);
       onSelectFolder(folder.id);
       void queryClient.invalidateQueries({ queryKey: ["folders"] });
+    }
+  });
+  const createTagMutation = useMutation({
+    mutationFn: createTag,
+    onSuccess: (tag) => {
+      queryClient.setQueryData<TagItem[]>(["tags"], (currentTags = []) => [
+        ...currentTags.filter((currentTag) => currentTag.id !== tag.id),
+        tag
+      ]);
+      collapsedLibraries.remove(tag.libraryId);
+      setCreatingTagLibraryId(null);
+      onSelectTag(tag.id);
+      void queryClient.invalidateQueries({ queryKey: ["tags"] });
     }
   });
   const updateFolderMutation = useMutation({
@@ -124,7 +151,15 @@ export const FolderSidebar = ({
     if (parentId) {
       collapsedFolders.remove(parentId);
     }
+    setCreatingTagLibraryId(null);
     setCreatingTarget({ libraryId, parentId });
+  };
+
+  const startCreatingTag = (libraryId: string) => {
+    collapsedLibraries.remove(libraryId);
+    setCreatingTarget(null);
+    setEditingFolderId(null);
+    setCreatingTagLibraryId(libraryId);
   };
 
   const menuFolder = menu ? folders.find((folder) => folder.id === menu.folderId) ?? null : null;
@@ -175,9 +210,7 @@ export const FolderSidebar = ({
               className="grid h-8 w-8 place-items-center rounded-xl border border-transparent text-gray-500 outline-none hover:border-gray-200 hover:bg-white hover:text-slate-950 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-500"
               aria-label="Create folder"
               type="button"
-              onClick={() =>
-                startCreatingFolder(currentUser.libraries[0].id, null)
-              }
+              onClick={() => startCreatingFolder(currentUser.libraries[0].id, null)}
             >
               <IconFolderPlus size={16} stroke={1.5} aria-hidden="true" focusable="false" />
             </button>
@@ -198,7 +231,7 @@ export const FolderSidebar = ({
           const isLibraryCollapsed = collapsedLibraryIds.has(library.id) && !isFilteringFolders;
 
           return (
-            <section className="grid gap-1" key={library.id} aria-label={`${library.name} folders`}>
+            <section className="grid gap-2" key={library.id} aria-label={`${library.name} workspace`}>
               <div className="relative grid min-h-9 grid-cols-[minmax(0,1fr)_1.75rem_2rem] items-center gap-1">
                 <button
                   className="col-span-3 flex min-h-9 min-w-0 items-center gap-2 rounded-xl py-0 pr-10 pl-2.5 text-left outline-none hover:bg-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-500"
@@ -260,71 +293,111 @@ export const FolderSidebar = ({
                       isLibraryCollapsed ? "pointer-events-none" : ""
                     ].join(" ")}
                   >
-                    <WorkspaceInboxRow
-                      activeFolderId={activeFolderId}
-                      libraryId={library.id}
-                      onSelectFolder={onSelectFolder}
-                    />
-                    {creatingTarget?.libraryId === library.id &&
-                    creatingTarget.parentId === null ? (
-                      <div style={{ marginLeft: `${folderRowIndent(1)}px` }}>
-                        <InlineFolderForm
-                          error={
+                    <section className="grid gap-1" aria-label={`${library.name} folders`}>
+                      <div className="flex min-h-8 items-center justify-between pl-[12px] pr-2.5">
+                        <span className="text-xs font-bold tracking-[0.04em] text-gray-400 uppercase">
+                          Folders
+                        </span>
+                        <button
+                          className="grid h-7 w-7 place-items-center rounded-lg border border-transparent text-gray-500 outline-none hover:border-gray-200 hover:bg-white hover:text-slate-950 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-500"
+                          aria-label={`Create folder in ${library.name}`}
+                          type="button"
+                          onClick={() => startCreatingFolder(library.id, null)}
+                        >
+                          <IconFolderPlus
+                            size={15}
+                            stroke={1.5}
+                            aria-hidden="true"
+                            focusable="false"
+                          />
+                        </button>
+                      </div>
+                      <WorkspaceInboxRow
+                        activeFolderId={activeFolderId}
+                        activeTagId={activeTagId}
+                        libraryId={library.id}
+                        onSelectFolder={onSelectFolder}
+                      />
+                      {creatingTarget?.libraryId === library.id &&
+                      creatingTarget.parentId === null ? (
+                        <div style={{ marginLeft: `${folderRowIndent(1)}px` }}>
+                          <InlineFolderForm
+                            error={
+                              createFolderMutation.isError ? "Folder could not be created." : null
+                            }
+                            isPending={createFolderMutation.isPending}
+                            leadingSlot={<FolderDisclosurePlaceholder />}
+                            submitLabel="Create"
+                            onCancel={() => setCreatingTarget(null)}
+                            onSubmit={(folder) =>
+                              createFolderMutation.mutate({
+                                libraryId: library.id,
+                                ...folder,
+                                parentId: null
+                              })
+                            }
+                          />
+                        </div>
+                      ) : null}
+                      <LibraryRootDropZone
+                        isActive={activeFolderDragId !== null}
+                        libraryId={library.id}
+                      />
+                      {roots.map((folder) => (
+                        <FolderTreeRow
+                          activeFolderId={activeFolderId}
+                          activeFolderDragId={activeFolderDragId}
+                          collapsedFolderIds={collapsedFolderIds}
+                          creatingTarget={creatingTarget}
+                          editingFolderId={editingFolderId}
+                          folder={folder}
+                          key={folder.id}
+                          level={1}
+                          createError={
                             createFolderMutation.isError ? "Folder could not be created." : null
                           }
-                          isPending={createFolderMutation.isPending}
-                          leadingSlot={<FolderDisclosurePlaceholder />}
-                          submitLabel="Create"
-                          onCancel={() => setCreatingTarget(null)}
-                          onSubmit={(folder) =>
-                            createFolderMutation.mutate({
-                              libraryId: library.id,
-                              ...folder,
-                              parentId: null
-                            })
+                          createPending={createFolderMutation.isPending}
+                          editError={
+                            updateFolderMutation.isError ? "Folder could not be updated." : null
                           }
+                          editPending={updateFolderMutation.isPending}
+                          isFiltering={isFilteringFolders}
+                          onCancelCreate={() => setCreatingTarget(null)}
+                          onCancelEdit={() => setEditingFolderId(null)}
+                          onCreateFolder={(libraryId, parentId, folder) =>
+                            createFolderMutation.mutate({ libraryId, parentId, ...folder })
+                          }
+                          onEditFolder={(folderId, folder) =>
+                            updateFolderMutation.mutate({ folderId, ...folder })
+                          }
+                          onOpenMenu={openFolderMenu}
+                          onSelectFolder={onSelectFolder}
+                          onToggleFolder={toggleCollapsedFolder}
                         />
-                      </div>
-                    ) : null}
-                    <LibraryRootDropZone
-                      isActive={activeFolderDragId !== null}
+                      ))}
+                      {roots.length === 0 ? (
+                        <p className="m-0 px-2.5 py-1 text-xs font-bold text-gray-400">
+                          No folders
+                        </p>
+                      ) : null}
+                    </section>
+                    <TagSection
+                      activeTagId={activeTagId}
+                      creatingTagLibraryId={creatingTagLibraryId}
+                      createError={createTagMutation.isError}
+                      createPending={createTagMutation.isPending}
+                      isError={isTagsError}
+                      isLoading={isTagsLoading}
                       libraryId={library.id}
+                      libraryName={library.name}
+                      tags={tags.filter((tag) => tag.libraryId === library.id)}
+                      onCancelCreate={() => setCreatingTagLibraryId(null)}
+                      onCreateTag={(tag) =>
+                        createTagMutation.mutate({ libraryId: library.id, ...tag })
+                      }
+                      onSelectTag={onSelectTag}
+                      onStartCreate={() => startCreatingTag(library.id)}
                     />
-                    {roots.map((folder) => (
-                      <FolderTreeRow
-                        activeFolderId={activeFolderId}
-                        activeFolderDragId={activeFolderDragId}
-                        collapsedFolderIds={collapsedFolderIds}
-                        creatingTarget={creatingTarget}
-                        editingFolderId={editingFolderId}
-                        folder={folder}
-                        key={folder.id}
-                        level={1}
-                        createError={
-                          createFolderMutation.isError ? "Folder could not be created." : null
-                        }
-                        createPending={createFolderMutation.isPending}
-                        editError={
-                          updateFolderMutation.isError ? "Folder could not be updated." : null
-                        }
-                        editPending={updateFolderMutation.isPending}
-                        isFiltering={isFilteringFolders}
-                        onCancelCreate={() => setCreatingTarget(null)}
-                        onCancelEdit={() => setEditingFolderId(null)}
-                        onCreateFolder={(libraryId, parentId, folder) =>
-                          createFolderMutation.mutate({ libraryId, parentId, ...folder })
-                        }
-                        onEditFolder={(folderId, folder) =>
-                          updateFolderMutation.mutate({ folderId, ...folder })
-                        }
-                        onOpenMenu={openFolderMenu}
-                        onSelectFolder={onSelectFolder}
-                        onToggleFolder={toggleCollapsedFolder}
-                      />
-                    ))}
-                    {roots.length === 0 ? (
-                      <p className="m-0 px-2.5 py-1 text-xs font-bold text-gray-400">No folders</p>
-                    ) : null}
                   </div>
                 </div>
               </div>
@@ -373,10 +446,12 @@ export const FolderSidebar = ({
 
 const WorkspaceInboxRow = ({
   activeFolderId,
+  activeTagId,
   libraryId,
   onSelectFolder
 }: {
   activeFolderId: string | null;
+  activeTagId: string | null;
   libraryId: string;
   onSelectFolder: (folderId: string | null) => void;
 }) => {
@@ -393,7 +468,9 @@ const WorkspaceInboxRow = ({
       ref={setNodeRef}
       className={[
         "flex min-h-9 items-center gap-0.5 rounded-xl pr-8 text-left text-sm font-medium outline-none hover:bg-white hover:text-slate-950 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-500",
-        activeFolderId === null ? "bg-gray-100 text-slate-950" : "text-gray-700",
+        activeFolderId === null && activeTagId === null
+          ? "bg-gray-100 text-slate-950"
+          : "text-gray-700",
         isOver ? "bg-blue-50 text-slate-950 ring-2 ring-blue-500 ring-inset" : ""
       ].join(" ")}
       data-workspace-inbox={libraryId}
@@ -411,6 +488,102 @@ const WorkspaceInboxRow = ({
     </button>
   );
 };
+
+const TagSection = ({
+  activeTagId,
+  creatingTagLibraryId,
+  createError,
+  createPending,
+  isError,
+  isLoading,
+  libraryId,
+  libraryName,
+  tags,
+  onCancelCreate,
+  onCreateTag,
+  onSelectTag,
+  onStartCreate
+}: {
+  activeTagId: string | null;
+  creatingTagLibraryId: string | null;
+  createError: boolean;
+  createPending: boolean;
+  isError: boolean;
+  isLoading: boolean;
+  libraryId: string;
+  libraryName: string;
+  tags: TagItem[];
+  onCancelCreate: () => void;
+  onCreateTag: (tag: { name: string; color: string }) => void;
+  onSelectTag: (tagId: string) => void;
+  onStartCreate: () => void;
+}) => (
+  <section className="grid gap-1 pt-3" aria-label={`${libraryName} tags`}>
+    <div className="flex min-h-8 items-center justify-between pl-[12px] pr-2.5">
+      <span className="text-xs font-bold tracking-[0.04em] text-gray-400 uppercase">Tags</span>
+      <button
+        className="grid h-7 w-7 place-items-center rounded-lg border border-transparent text-gray-500 outline-none hover:border-gray-200 hover:bg-white hover:text-slate-950 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-500"
+        aria-label={`Create tag in ${libraryName}`}
+        type="button"
+        onClick={onStartCreate}
+      >
+        <IconTagPlus size={15} stroke={1.5} aria-hidden="true" focusable="false" />
+      </button>
+    </div>
+    {isLoading ? (
+      <p className="m-0 px-2.5 py-1 text-xs font-bold text-gray-400">Loading tags</p>
+    ) : null}
+    {isError ? (
+      <p className="m-0 px-2.5 py-1 text-xs font-bold text-orange-700">
+        Tags could not be loaded.
+      </p>
+    ) : null}
+    {creatingTagLibraryId === libraryId ? (
+      <div style={{ marginLeft: `${folderRowIndent(1)}px` }}>
+        <InlineTagForm
+          error={createError ? "Tag could not be created." : null}
+          isPending={createPending}
+          onCancel={onCancelCreate}
+          onSubmit={onCreateTag}
+        />
+      </div>
+    ) : null}
+    {tags.map((tag) => (
+      <button
+        className={[
+          "flex min-h-9 items-center gap-0.5 rounded-xl pr-8 text-left text-sm font-medium outline-none hover:bg-white hover:text-slate-950 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-500",
+          activeTagId === tag.id ? "bg-gray-100 text-slate-950" : "text-gray-700"
+        ].join(" ")}
+        aria-label={tag.name}
+        key={tag.id}
+        style={{ marginLeft: `${folderRowIndent(1)}px` }}
+        type="button"
+        onClick={() => onSelectTag(tag.id)}
+      >
+        <span className="h-7 w-5 shrink-0" aria-hidden="true" />
+        <span className="flex min-h-9 min-w-0 flex-1 items-center gap-2 pr-2.5">
+          <IconTag
+            size={20}
+            stroke={1.5}
+            color={tag.color ?? "#697080"}
+            aria-hidden="true"
+            focusable="false"
+          />
+          <span className="truncate">{tag.name}</span>
+        </span>
+        <span
+          className="grid h-9 place-items-center text-xs font-extrabold text-gray-400"
+          aria-hidden="true"
+        >
+          {tag.bookmarkCount > 0 ? tag.bookmarkCount : null}
+        </span>
+      </button>
+    ))}
+    {!isLoading && tags.length === 0 ? (
+      <p className="m-0 px-2.5 py-1 text-xs font-bold text-gray-400">No tags</p>
+    ) : null}
+  </section>
+);
 
 const LibraryRootDropZone = ({
   isActive,

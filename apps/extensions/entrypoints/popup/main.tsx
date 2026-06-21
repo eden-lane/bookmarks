@@ -28,6 +28,7 @@ interface TagItem {
   id: string;
   libraryId: string;
   name: string;
+  color: string | null;
   bookmarkCount: number;
 }
 

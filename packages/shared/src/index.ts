@@ -98,6 +98,7 @@ export interface TagItem {
   id: string;
   libraryId: string;
   name: string;
+  color: string | null;
   bookmarkCount: number;
   createdAt: string;
   updatedAt: string;
@@ -128,6 +129,7 @@ export interface ListBookmarksInput {
   folderId?: string | null;
   inbox?: boolean;
   limit?: number;
+  tagId?: string | null;
 }
 
 export interface CreateFolderInput {
@@ -155,4 +157,10 @@ export interface DeleteFolderInput {
   folderId: string;
   mode: "move" | "delete";
   destinationFolderId?: string | null;
+}
+
+export interface CreateTagInput {
+  libraryId: string;
+  name: string;
+  color?: string | null;
 }

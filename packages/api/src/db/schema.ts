@@ -231,6 +231,7 @@ export const tags = pgTable(
       .notNull()
       .references(() => libraries.id, { onDelete: "cascade" }),
     name: text("name").notNull(),
+    color: text("color"),
     ...timestamps
   },
   (table) => [

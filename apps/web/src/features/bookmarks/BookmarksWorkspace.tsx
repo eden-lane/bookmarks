@@ -4,22 +4,34 @@ import { useInfiniteQuery, useMutation, useQueryClient } from "@tanstack/react-q
 import type { BookmarksPageResponse } from "@bookmarks/shared";
 import { IconAlertTriangle, IconBookmark, IconRefresh } from "@tabler/icons-react";
 import { deleteBookmark, getBookmarks } from "../../api";
+import { bookmarkQueryKey } from "./bookmarkUtils";
 import { BookmarkRow } from "./BookmarkRow";
 
 export const BookmarksWorkspace = ({
   folderId,
-  folderName
+  folderName,
+  tagId,
+  tagName
 }: {
   folderId: string | null;
   folderName: string | null;
+  tagId: string | null;
+  tagName: string | null;
 }) => {
   const loadMoreRef = useRef<HTMLDivElement | null>(null);
   const queryClient = useQueryClient();
   const [notification, setNotification] = useState<string | null>(null);
+  const currentQueryKey = bookmarkQueryKey({ folderId, tagId });
   const bookmarks = useInfiniteQuery({
-    queryKey: ["bookmarks", folderId],
+    queryKey: currentQueryKey,
     queryFn: ({ pageParam }) =>
-      getBookmarks({ cursor: pageParam, folderId, inbox: folderId === null, limit: 20 }),
+      getBookmarks({
+        cursor: pageParam,
+        folderId,
+        inbox: folderId === null && tagId === null,
+        limit: 20,
+        tagId
+      }),
     initialPageParam: null as string | null,
     getNextPageParam: (lastPage) => lastPage.nextCursor
   });
@@ -29,7 +41,7 @@ export const BookmarksWorkspace = ({
   const deleteBookmarkMutation = useMutation({
     mutationFn: deleteBookmark,
     onMutate: async ({ bookmarkId }) => {
-      const queryKey = ["bookmarks", folderId];
+      const queryKey = currentQueryKey;
 
       await queryClient.cancelQueries({ queryKey });
 
@@ -180,9 +192,11 @@ export const BookmarksWorkspace = ({
             No items yet
           </h2>
           <p className="mb-0 max-w-full text-[#697080] sm:max-w-[56ch]">
-            {folderName
-              ? "Bookmarks added to this folder will appear here."
-              : "Bookmarks without a folder will appear here as soon as they are saved."}
+            {tagName
+              ? "Bookmarks with this tag will appear here."
+              : folderName
+                ? "Bookmarks added to this folder will appear here."
+                : "Bookmarks without a folder will appear here as soon as they are saved."}
           </p>
         </div>
       </section>
@@ -193,7 +207,9 @@ export const BookmarksWorkspace = ({
     <>
       <section
         className="grid w-full min-w-0 max-w-full gap-3 overflow-hidden"
-        aria-label={folderName ? `${folderName} items` : "Inbox items"}
+        aria-label={
+          tagName ? `${tagName} tagged items` : folderName ? `${folderName} items` : "Inbox items"
+        }
         aria-busy={bookmarks.isFetchingNextPage}
       >
         {items.map((item) => (

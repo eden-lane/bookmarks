@@ -14,6 +14,7 @@ export const listTags = async (db: Database, input: ListTagsInput): Promise<TagI
       id: schema.tags.id,
       libraryId: schema.tags.libraryId,
       name: schema.tags.name,
+      color: schema.tags.color,
       bookmarkCount: sql<number>`count(${schema.savedItemTags.savedItemId})`,
       createdAt: schema.tags.createdAt,
       updatedAt: schema.tags.updatedAt
@@ -31,6 +32,7 @@ export const listTags = async (db: Database, input: ListTagsInput): Promise<TagI
       schema.tags.id,
       schema.tags.libraryId,
       schema.tags.name,
+      schema.tags.color,
       schema.tags.createdAt,
       schema.tags.updatedAt
     )
@@ -40,6 +42,7 @@ export const listTags = async (db: Database, input: ListTagsInput): Promise<TagI
     id: row.id,
     libraryId: row.libraryId,
     name: row.name,
+    color: row.color,
     bookmarkCount: Number(row.bookmarkCount),
     createdAt: row.createdAt.toISOString(),
     updatedAt: row.updatedAt.toISOString()

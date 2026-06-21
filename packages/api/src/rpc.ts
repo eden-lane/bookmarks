@@ -1,6 +1,7 @@
 import type {
   CreateBookmarkInput,
   CreateFolderInput,
+  CreateTagInput,
   DeleteBookmarkInput,
   DeleteFolderInput,
   MoveFolderInput,
@@ -201,6 +202,23 @@ export const createRpcRouter = (options: RpcRouterOptions) => ({
     })
   },
   tags: {
+    create: os.handler(async ({ input }) => {
+      assertCurrentUser(options.currentUser);
+      assertBookmarksStore(options.bookmarksStore);
+
+      const tag = parseCreateTagInput(input);
+
+      if (!tag) {
+        throw new ORPCError("BAD_REQUEST", {
+          message: "Enter a tag name"
+        });
+      }
+
+      return options.bookmarksStore.createTag({
+        ...tag,
+        allowedLibraryIds: currentUserLibraryIds(options.currentUser)
+      });
+    }),
     list: os.handler(() => {
       assertCurrentUser(options.currentUser);
       assertBookmarksStore(options.bookmarksStore);
@@ -294,7 +312,13 @@ export type RpcRouter = ReturnType<typeof createRpcRouter>;
 
 const parseBookmarksInput = (
   input: unknown
-): { limit: number; cursor?: BookmarkCursor; folderId?: string; inbox?: boolean } | null => {
+): {
+  limit: number;
+  cursor?: BookmarkCursor;
+  folderId?: string;
+  inbox?: boolean;
+  tagId?: string;
+} | null => {
   if (!isRecord(input)) {
     return {
       limit: parseBookmarksLimit(null)
@@ -312,7 +336,8 @@ const parseBookmarksInput = (
     cursor: cursor ?? undefined,
     folderId: typeof input.folderId === "string" && input.folderId ? input.folderId : undefined,
     inbox: input.inbox === true,
-    limit: parseBookmarksLimit(typeof input.limit === "number" ? String(input.limit) : null)
+    limit: parseBookmarksLimit(typeof input.limit === "number" ? String(input.limit) : null),
+    tagId: typeof input.tagId === "string" && input.tagId ? input.tagId : undefined
   };
 };
 
@@ -434,6 +459,24 @@ const parseUpdateFolderInput = (input: unknown): UpdateFolderInput | null => {
     folderId: input.folderId,
     iconColor: parseFolderIconColor(input.iconColor),
     iconName: parseFolderIconName(input.iconName),
+    name
+  };
+};
+
+const parseCreateTagInput = (input: unknown): CreateTagInput | null => {
+  if (!isRecord(input) || typeof input.libraryId !== "string") {
+    return null;
+  }
+
+  const name = parseFolderName(input.name);
+
+  if (!name) {
+    return null;
+  }
+
+  return {
+    color: parseFolderIconColor(input.color),
+    libraryId: input.libraryId,
     name
   };
 };
