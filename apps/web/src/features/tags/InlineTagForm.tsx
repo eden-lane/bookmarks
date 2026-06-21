@@ -72,14 +72,14 @@ export const InlineTagForm = ({
 
   return (
     <form
-      className="grid gap-2 rounded-lg border border-[#dfe4ef] bg-white p-2"
+      className="grid gap-1.5 rounded-lg border border-[#dfe4ef] bg-white p-1.5"
       noValidate
       onSubmit={(event) => {
         event.preventDefault();
         submitTag();
       }}
     >
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-1.5">
         <span
           className="h-3 w-3 shrink-0 rounded-full"
           style={{ backgroundColor: color }}
@@ -87,7 +87,7 @@ export const InlineTagForm = ({
         />
         <input
           className={[
-            "min-h-8 min-w-0 flex-1 rounded-md border bg-transparent px-1.5 text-sm font-medium text-[#242833] outline-none placeholder:text-[#9aa1ad]",
+            "min-h-7 min-w-0 flex-1 rounded-md border bg-transparent px-1.5 text-[13px] font-medium text-[#242833] outline-none placeholder:text-[#9aa1ad]",
             isNameInvalid ? "border-[#ef4444] ring-3 ring-[#fee2e2]" : "border-transparent",
             isNameShaking ? "field-shake" : ""
           ].join(" ")}
@@ -102,17 +102,17 @@ export const InlineTagForm = ({
           onInput={(event) => updateName(event.currentTarget.value)}
         />
         <button
-          className="grid h-8 w-7 place-items-center rounded-lg border border-transparent bg-transparent text-[#697080] outline-none hover:bg-[#f7f8fc] hover:text-[#242833] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#3b8df5]"
+          className="grid h-7 w-6 place-items-center rounded-lg border border-transparent bg-transparent text-[#697080] outline-none hover:bg-[#f7f8fc] hover:text-[#242833] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#3b8df5]"
           aria-label="Cancel"
           disabled={isPending}
           title="Cancel"
           type="button"
           onClick={onCancel}
         >
-          <IconX size={16} stroke={1.5} aria-hidden="true" focusable="false" />
+          <IconX size={14} stroke={1.5} aria-hidden="true" focusable="false" />
         </button>
         <button
-          className="grid h-8 w-8 place-items-center rounded-lg border border-transparent bg-transparent text-[#3b8df5] outline-none hover:bg-[#eef6ff] disabled:cursor-not-allowed disabled:text-[#91bff8] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#3b8df5]"
+          className="grid h-7 w-7 place-items-center rounded-lg border border-transparent bg-transparent text-[#3b8df5] outline-none hover:bg-[#eef6ff] disabled:cursor-not-allowed disabled:text-[#91bff8] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#3b8df5]"
           aria-label={isPending ? "Saving" : submitLabel}
           disabled={isPending}
           title={isPending ? "Saving" : submitLabel}
@@ -122,14 +122,14 @@ export const InlineTagForm = ({
             submitTag();
           }}
         >
-          <IconCheck size={17} stroke={1.8} aria-hidden="true" focusable="false" />
+          <IconCheck size={15} stroke={1.8} aria-hidden="true" focusable="false" />
         </button>
       </div>
-      <div className="flex flex-wrap gap-1.5" aria-label="Tag colors">
+      <div className="flex flex-wrap gap-1" aria-label="Tag colors">
         {TAG_COLORS.map((tagColor) => (
           <button
             className={[
-              "grid h-6 w-6 place-items-center rounded-full border outline-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#3b8df5]",
+              "grid h-5 w-5 place-items-center rounded-full border outline-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#3b8df5]",
               color === tagColor ? "border-slate-950" : "border-transparent"
             ].join(" ")}
             aria-label={`Select tag color ${tagColor}`}
@@ -139,7 +139,7 @@ export const InlineTagForm = ({
             onClick={() => setColor(tagColor)}
           >
             <span
-              className="h-4 w-4 rounded-full"
+              className="h-3.5 w-3.5 rounded-full"
               style={{ backgroundColor: tagColor }}
               aria-hidden="true"
             />

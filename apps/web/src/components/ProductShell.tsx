@@ -556,11 +556,11 @@ export const ProductShell = () => {
       <main className="min-h-dvh w-full max-w-full overflow-x-hidden bg-gray-50 font-sans text-slate-950 md:flex md:h-screen md:overflow-hidden">
       <aside
         className={[
-          "fixed inset-y-0 left-0 z-30 h-dvh max-h-dvh w-[min(300px,calc(100vw-48px))] touch-pan-y overflow-hidden overscroll-contain bg-gray-50 text-slate-950 transition-[transform,opacity,width,border-color] duration-300 ease-out md:static md:h-screen md:max-h-none md:shrink-0",
+          "fixed inset-y-0 left-0 z-30 h-dvh max-h-dvh w-[min(360px,calc(100vw-48px))] touch-pan-y overflow-hidden overscroll-contain bg-gray-50 text-slate-950 transition-[transform,opacity,width,border-color] duration-300 ease-out md:static md:h-screen md:max-h-none md:shrink-0",
           sidebarDragOffset < 0 ? "transition-none" : "",
           isSidebarVisible
-            ? "translate-x-0 border-r border-gray-200 opacity-100 shadow-[16px_0_44px_rgb(15_23_42_/_0.14)] md:w-[300px] md:shadow-none"
-            : "pointer-events-none -translate-x-full border-r-0 opacity-0 md:w-0"
+            ? "translate-x-0 opacity-100 shadow-[16px_0_44px_rgb(15_23_42_/_0.14)] md:w-[340px] md:shadow-none"
+            : "pointer-events-none -translate-x-full opacity-0 md:w-0"
         ].join(" ")}
         aria-label="Primary"
         aria-hidden={!isSidebarVisible}
@@ -574,7 +574,7 @@ export const ProductShell = () => {
         onTouchEnd={handleSidebarTouchEnd}
       >
         <div
-          className="h-full w-[min(300px,calc(100vw-48px))] min-w-0 overflow-x-hidden overflow-y-auto overscroll-contain px-3 py-3 md:w-[300px] md:px-4 md:py-4"
+          className="h-full w-[min(360px,calc(100vw-48px))] min-w-0 overflow-x-hidden overflow-y-auto overscroll-contain px-4 py-4 md:w-[340px] md:px-6 md:py-5"
           ref={sidebarScrollRef}
         >
           <FolderSidebar

@@ -54,7 +54,7 @@ export const InlineFolderForm = ({
 
   return (
     <form
-      className="grid min-h-9 min-w-0 grid-cols-[minmax(0,1fr)_1.75rem_2rem] items-center gap-1"
+      className="grid min-h-8 min-w-0 grid-cols-[minmax(0,1fr)_1.5rem_1.75rem] items-center gap-1"
       noValidate
       onSubmit={(event) => {
         event.preventDefault();
@@ -89,7 +89,7 @@ export const InlineFolderForm = ({
         />
         <input
           className={[
-            "min-h-8 min-w-0 flex-1 rounded-md border bg-transparent px-1.5 text-sm font-medium text-[#242833] outline-none placeholder:text-[#9aa1ad]",
+            "min-h-7 min-w-0 flex-1 rounded-md border bg-transparent px-1.5 text-[13px] font-medium text-[#242833] outline-none placeholder:text-[#9aa1ad]",
             isNameInvalid
               ? "border-[#ef4444] ring-3 ring-[#fee2e2]"
               : "border-transparent",
@@ -107,23 +107,23 @@ export const InlineFolderForm = ({
         />
       </div>
       <button
-        className="grid h-8 w-7 place-items-center rounded-lg border border-transparent bg-transparent text-[#697080] outline-none hover:bg-[#f7f8fc] hover:text-[#242833] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#3b8df5]"
+        className="grid h-7 w-6 place-items-center rounded-lg border border-transparent bg-transparent text-[#697080] outline-none hover:bg-[#f7f8fc] hover:text-[#242833] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#3b8df5]"
         aria-label="Cancel"
         disabled={isPending}
         title="Cancel"
         type="button"
         onClick={onCancel}
       >
-        <IconX size={16} stroke={1.5} aria-hidden="true" focusable="false" />
+        <IconX size={14} stroke={1.5} aria-hidden="true" focusable="false" />
       </button>
       <button
-        className="grid h-8 w-8 place-items-center rounded-lg border border-transparent bg-transparent text-[#3b8df5] outline-none hover:bg-[#eef6ff] disabled:cursor-not-allowed disabled:text-[#91bff8] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#3b8df5]"
+        className="grid h-7 w-7 place-items-center rounded-lg border border-transparent bg-transparent text-[#3b8df5] outline-none hover:bg-[#eef6ff] disabled:cursor-not-allowed disabled:text-[#91bff8] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#3b8df5]"
         aria-label={isPending ? "Saving" : submitLabel}
         disabled={isPending}
         title={isPending ? "Saving" : submitLabel}
         type="submit"
       >
-        <IconCheck size={17} stroke={1.8} aria-hidden="true" focusable="false" />
+        <IconCheck size={15} stroke={1.8} aria-hidden="true" focusable="false" />
       </button>
       {error ? (
         <p className="col-span-3 m-0 text-xs font-bold text-[#9a4d0a]">{error}</p>

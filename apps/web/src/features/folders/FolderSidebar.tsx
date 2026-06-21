@@ -204,35 +204,35 @@ export const FolderSidebar = ({
   return (
     <nav className="flex min-h-full flex-col gap-4" aria-label="Folders">
       <div className="flex items-center gap-2">
-        <label className="flex min-h-10 min-w-0 flex-1 items-center gap-2.5 rounded-xl border border-gray-200 bg-white px-2.5 text-gray-500 outline-none focus-within:border-blue-500 focus-within:ring-3 focus-within:ring-blue-100">
-          <IconSearch size={22} stroke={1.5} aria-hidden="true" focusable="false" />
+        <label className="flex min-h-9 min-w-0 flex-1 items-center gap-2 rounded-xl border border-gray-200 bg-white px-3 text-gray-500 shadow-[0_8px_22px_rgb(15_23_42_/_0.04)] outline-none focus-within:border-blue-500 focus-within:ring-3 focus-within:ring-blue-100">
+          <IconSearch size={18} stroke={1.5} aria-hidden="true" focusable="false" />
           <input
-            className="min-w-0 flex-1 bg-transparent text-base font-medium text-slate-950 outline-none placeholder:text-gray-500"
+            className="min-w-0 flex-1 bg-transparent text-[13px] font-medium text-slate-950 outline-none placeholder:text-gray-500"
             aria-label="Search folders"
-            placeholder="Type to search..."
+            placeholder="Search..."
             type="search"
             value={folderSearch}
             onChange={(event) => setFolderSearch(event.target.value)}
           />
         </label>
         <button
-          className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-red-500 text-white shadow-sm outline-none hover:bg-red-600 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-500"
+          className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-red-500 text-white shadow-sm outline-none hover:bg-red-600 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-500"
           aria-label="Add bookmark"
           title="Add bookmark"
           type="button"
           onClick={() => onAddBookmark({ folder: null, tag: null })}
         >
-          <IconPlus size={25} stroke={1.5} aria-hidden="true" focusable="false" />
+          <IconPlus size={20} stroke={1.7} aria-hidden="true" focusable="false" />
         </button>
         <button
-          className="grid h-10 w-10 shrink-0 place-items-center rounded-xl border border-gray-200 bg-white text-slate-950 outline-none hover:bg-gray-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-500"
+          className="grid h-9 w-9 shrink-0 place-items-center rounded-xl border border-gray-200 bg-white text-slate-950 shadow-[0_8px_22px_rgb(15_23_42_/_0.04)] outline-none hover:bg-gray-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-500"
           aria-label="Hide sidebar"
           title="Hide sidebar"
           type="button"
           onClick={onHideSidebar}
         >
           <IconLayoutSidebarLeftCollapse
-            size={23}
+            size={19}
             stroke={1.5}
             aria-hidden="true"
             focusable="false"
@@ -256,9 +256,9 @@ export const FolderSidebar = ({
 
           return (
             <section className="grid gap-2" key={library.id} aria-label={`${library.name} workspace`}>
-              <div className="relative grid min-h-9 items-center gap-1">
+              <div className="relative grid min-h-7 items-center gap-1">
                 <button
-                  className="flex min-h-9 min-w-0 items-center gap-2 rounded-xl py-0 pr-2.5 pl-2.5 text-left outline-none hover:bg-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-500"
+                  className="flex min-h-8 min-w-0 items-center gap-1.5 rounded-xl py-0 pr-2 pl-2 text-left outline-none hover:bg-white/70 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-500"
                   aria-expanded={!isLibraryCollapsed}
                   aria-label={`${isLibraryCollapsed ? "Expand" : "Collapse"} workspace ${library.name}`}
                   type="button"
@@ -267,7 +267,7 @@ export const FolderSidebar = ({
                   {isLibraryCollapsed ? (
                     <IconChevronRight
                       className="shrink-0 text-gray-500"
-                      size={16}
+                      size={14}
                       stroke={1.5}
                       aria-hidden="true"
                       focusable="false"
@@ -275,7 +275,7 @@ export const FolderSidebar = ({
                   ) : (
                     <IconChevronDown
                       className="shrink-0 text-gray-500"
-                      size={16}
+                      size={14}
                       stroke={1.5}
                       aria-hidden="true"
                       focusable="false"
@@ -283,12 +283,12 @@ export const FolderSidebar = ({
                   )}
                   <IconDatabase
                     className="shrink-0 text-gray-500"
-                    size={21}
+                    size={17}
                     stroke={1.5}
                     aria-hidden="true"
                     focusable="false"
                   />
-                  <span className="truncate text-sm font-medium text-slate-950">
+                  <span className="truncate text-[13px] font-medium text-slate-950">
                     {library.name}
                   </span>
                 </button>
@@ -305,13 +305,13 @@ export const FolderSidebar = ({
                 <div className="-ml-3 overflow-hidden pl-3">
                   <div
                     className={[
-                      "relative grid gap-1 pt-1",
+                      "relative grid gap-1 pt-0.5",
                       isLibraryCollapsed ? "pointer-events-none" : ""
                     ].join(" ")}
                   >
                     <section className="grid gap-1" aria-label={`${library.name} folders`}>
                       <div
-                        className="grid min-h-8 grid-cols-[minmax(0,1fr)_2rem] items-center"
+                        className="grid min-h-7 grid-cols-[minmax(0,1fr)_1.75rem] items-center"
                         style={{ marginLeft: `${folderRowIndent(1)}px` }}
                       >
                         <span className="text-xs font-bold tracking-[0.04em] text-gray-400 uppercase">
@@ -324,7 +324,7 @@ export const FolderSidebar = ({
                           onClick={() => startCreatingFolder(library.id, null)}
                         >
                           <IconFolderPlus
-                            size={15}
+                            size={14}
                             stroke={1.5}
                             aria-hidden="true"
                             focusable="false"
@@ -524,9 +524,9 @@ const WorkspaceInboxRow = ({
     <button
       ref={setNodeRef}
       className={[
-        "flex min-h-9 items-center gap-0.5 rounded-xl pr-8 text-left text-sm font-medium outline-none hover:bg-white hover:text-slate-950 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-500",
+        "flex min-h-8 items-center gap-0.5 rounded-xl pr-7 text-left text-[13px] font-medium outline-none hover:bg-white/70 hover:text-slate-950 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-500",
         activeFolderId === null && activeTagId === null
-          ? "bg-gray-100 text-slate-950"
+          ? "bg-gray-100/90 text-slate-950"
           : "text-gray-700",
         isOver ? "bg-blue-50 text-slate-950 ring-2 ring-blue-500 ring-inset" : ""
       ].join(" ")}
@@ -535,9 +535,9 @@ const WorkspaceInboxRow = ({
       type="button"
       onClick={() => onSelectFolder(null)}
     >
-      <span className="h-7 w-5 shrink-0" aria-hidden="true" />
-      <span className="flex min-h-9 min-w-0 flex-1 items-center gap-2 pr-2.5">
-        <IconBookmark size={21} stroke={1.5} aria-hidden="true" focusable="false" />
+      <span className="h-6 w-4 shrink-0" aria-hidden="true" />
+      <span className="flex min-h-8 min-w-0 flex-1 items-center gap-2 pr-2">
+        <IconBookmark size={17} stroke={1.5} aria-hidden="true" focusable="false" />
         <span className="truncate" data-workspace-inbox-title={libraryId}>
           Inbox
         </span>
@@ -589,7 +589,7 @@ const TagSection = ({
 }) => (
   <section className="grid gap-1 pt-3" aria-label={`${libraryName} tags`}>
     <div
-      className="grid min-h-8 grid-cols-[minmax(0,1fr)_1.75rem_2rem] items-center"
+      className="grid min-h-7 grid-cols-[minmax(0,1fr)_1.5rem_1.75rem] items-center"
       style={{ marginLeft: `${folderRowIndent(1)}px` }}
     >
       <span className="text-xs font-bold tracking-[0.04em] text-gray-400 uppercase">Tags</span>
@@ -599,7 +599,7 @@ const TagSection = ({
         type="button"
         onClick={onStartCreate}
       >
-        <IconTagPlus size={15} stroke={1.5} aria-hidden="true" focusable="false" />
+        <IconTagPlus size={14} stroke={1.5} aria-hidden="true" focusable="false" />
       </button>
     </div>
     {isLoading ? (
@@ -623,8 +623,8 @@ const TagSection = ({
     {tags.map((tag) => (
       <div
         className={[
-          "group grid min-h-9 grid-cols-[minmax(0,1fr)_1.75rem_2rem] items-center rounded-xl text-sm font-medium",
-          activeTagId === tag.id ? "bg-gray-100 text-slate-950" : "text-gray-700 hover:bg-white"
+          "group grid min-h-8 grid-cols-[minmax(0,1fr)_1.5rem_1.75rem] items-center rounded-xl text-[13px] font-medium",
+          activeTagId === tag.id ? "bg-gray-100/90 text-slate-950" : "text-gray-700 hover:bg-white/70"
         ].join(" ")}
         key={tag.id}
         style={{ marginLeft: `${folderRowIndent(1)}px` }}
@@ -648,29 +648,31 @@ const TagSection = ({
         ) : (
           <>
             <button
-              className="flex min-h-9 min-w-0 items-center gap-2 rounded-xl pr-2.5 text-left outline-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-500"
+              className="flex min-h-8 min-w-0 items-center gap-0.5 rounded-xl pr-2 text-left outline-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-500"
               aria-label={tag.name}
               type="button"
               onClick={() => onSelectTag(tag.id)}
             >
-              <span className="h-7 w-5 shrink-0" aria-hidden="true" />
-              <IconTag
-                size={20}
-                stroke={1.5}
-                color={tag.color ?? "#697080"}
-                aria-hidden="true"
-                focusable="false"
-              />
-              <span className="truncate">{tag.name}</span>
+              <span className="h-6 w-4 shrink-0" aria-hidden="true" />
+              <span className="flex min-h-8 min-w-0 flex-1 items-center gap-2">
+                <IconTag
+                  size={16}
+                  stroke={1.5}
+                  color={tag.color ?? "#697080"}
+                  aria-hidden="true"
+                  focusable="false"
+                />
+                <span className="truncate">{tag.name}</span>
+              </span>
             </button>
             <span
-              className="grid h-9 place-items-center text-xs font-extrabold text-gray-400"
+              className="grid h-8 place-items-center text-[11px] font-extrabold text-gray-400"
               aria-hidden="true"
             >
               {tag.bookmarkCount > 0 ? tag.bookmarkCount : null}
             </span>
             <button
-              className="grid h-8 w-8 place-items-center justify-self-center rounded-lg border border-transparent text-gray-500 outline-none hover:border-gray-200 hover:bg-white hover:text-slate-950 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-500"
+              className="grid h-7 w-7 place-items-center justify-self-center rounded-lg border border-transparent text-gray-500 outline-none hover:border-gray-200 hover:bg-white hover:text-slate-950 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-500"
               aria-label={`Tag actions for ${tag.name}`}
               type="button"
               onClick={(event) => {
@@ -679,7 +681,7 @@ const TagSection = ({
                 onOpenMenu(tag, rect.left, rect.bottom + 4);
               }}
             >
-              <IconDotsVertical size={16} stroke={1.5} aria-hidden="true" focusable="false" />
+              <IconDotsVertical size={14} stroke={1.5} aria-hidden="true" focusable="false" />
             </button>
           </>
         )}

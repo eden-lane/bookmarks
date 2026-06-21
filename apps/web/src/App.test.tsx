@@ -614,9 +614,9 @@ describe("App", () => {
     expect(inboxButton.getAttribute("data-workspace-inbox")).toBe(
       "00000000-0000-4000-8000-000000000003"
     );
-    expect((inboxButton as HTMLElement).style.marginLeft).toBe("12px");
+    expect((inboxButton as HTMLElement).style.marginLeft).toBe("10px");
     expect(inboxButton.className).toContain("gap-0.5");
-    expect(inboxButton.className).toContain("pr-8");
+    expect(inboxButton.className).toContain("pr-7");
     expect(
       screen.container.querySelector(
         '[data-workspace-inbox-title="00000000-0000-4000-8000-000000000003"]'
@@ -665,7 +665,7 @@ describe("App", () => {
     expect((sidebar as HTMLElement).className).not.toContain("md:hidden");
     expect(screen.queryByRole("searchbox", { name: "Search folders" })).toBeNull();
     fireEvent.click(screen.getByRole("button", { name: "Show sidebar" }));
-    expect((sidebar as HTMLElement).className).toContain("md:w-[300px]");
+    expect((sidebar as HTMLElement).className).toContain("md:w-[340px]");
     expect((workspaceHeader as HTMLElement).className).toContain(
       "grid-cols-[minmax(0,1fr)_2.5rem]"
     );
@@ -700,19 +700,19 @@ describe("App", () => {
     expect((rootDropZone as HTMLElement).className).toContain("absolute");
     expect((rootDropZone as HTMLElement).className).toContain("opacity-0");
     const workspaceButton = screen.getByRole("button", { name: "Collapse workspace Personal" });
-    expect(workspaceButton.className).toContain("min-h-9");
+    expect(workspaceButton.className).toContain("min-h-8");
     expect(screen.getAllByRole("button", { name: "Create folder in Personal" })).toHaveLength(1);
     expect(screen.getAllByRole("button", { name: "Create tag in Personal" })).toHaveLength(1);
     const archiveTitle = screen.container.querySelector(
       '[data-folder-title="00000000-0000-4000-8000-000000000021"]'
     );
-    expect(archiveTitle?.closest("[data-folder-drop-target]")?.className).toContain("pr-8");
+    expect(archiveTitle?.closest("[data-folder-drop-target]")?.className).toContain("pr-7");
     const researchRow = screen.getByRole("button", { name: "Research" }).closest("[data-folder-drop-target]");
-    expect((researchRow as HTMLElement).style.marginLeft).toBe("12px");
+    expect((researchRow as HTMLElement).style.marginLeft).toBe("10px");
     expect(researchRow?.className).toContain("folder-tree-row");
     const dragResearchButton = screen.getByRole("button", { name: "Drag folder Research" });
     expect(dragResearchButton.className).toContain("folder-drag-handle");
-    expect(dragResearchButton.className).toContain("-left-5");
+    expect(dragResearchButton.className).toContain("-left-4");
     expect(dragResearchButton.className).toContain("opacity-0");
     expect(dragResearchButton.className).toContain("group-hover:opacity-100");
 

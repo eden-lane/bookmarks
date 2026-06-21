@@ -106,9 +106,9 @@ export const FolderTreeRow = ({
       <div
         ref={setRowRefs}
         className={[
-          "folder-tree-row group relative flex min-h-9 items-center rounded-xl transition-[background-color,box-shadow,opacity]",
-          hasBookmarkCount ? "pr-16" : "pr-8",
-          isActive ? "bg-gray-100 text-slate-950" : "text-slate-950 hover:bg-white",
+          "folder-tree-row group relative flex min-h-8 items-center rounded-xl transition-[background-color,box-shadow,opacity]",
+          hasBookmarkCount ? "pr-14" : "pr-7",
+          isActive ? "bg-gray-100/90 text-slate-950" : "text-slate-950 hover:bg-white/70",
           isOver ? "bg-blue-50 ring-2 ring-blue-500 ring-inset" : "",
           isDragging ? "z-20 opacity-80 shadow-[0_12px_34px_rgb(15_23_42_/_0.14)]" : ""
         ].join(" ")}
@@ -131,14 +131,14 @@ export const FolderTreeRow = ({
         />
         {!isEditing ? (
           <button
-            className="folder-drag-handle absolute top-1/2 -left-5 z-10 grid h-7 w-5 -translate-y-1/2 cursor-grab place-items-center rounded-lg text-gray-400 opacity-0 outline-none transition-opacity hover:bg-gray-100 hover:text-slate-950 hover:opacity-100 active:cursor-grabbing active:opacity-100 group-hover:opacity-100 focus-visible:opacity-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-500"
+            className="folder-drag-handle absolute top-1/2 -left-4 z-10 grid h-6 w-4 -translate-y-1/2 cursor-grab place-items-center rounded-md text-gray-400 opacity-0 outline-none transition-opacity hover:bg-gray-100 hover:text-slate-950 hover:opacity-100 active:cursor-grabbing active:opacity-100 group-hover:opacity-100 focus-visible:opacity-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-500"
             aria-label={`Drag folder ${folder.name}`}
             type="button"
             ref={setActivatorNodeRef}
             {...attributes}
             {...listeners}
           >
-            <IconGripVertical size={15} stroke={1.5} aria-hidden="true" focusable="false" />
+            <IconGripVertical size={13} stroke={1.5} aria-hidden="true" focusable="false" />
           </button>
         ) : null}
         {isEditing ? (
@@ -164,10 +164,10 @@ export const FolderTreeRow = ({
           </div>
         ) : (
           <>
-            <div className="flex min-h-9 min-w-0 flex-1 items-center gap-0.5">
+            <div className="flex min-h-8 min-w-0 flex-1 items-center gap-0.5">
               {hasChildren ? (
                 <button
-                  className="grid h-7 w-5 shrink-0 place-items-center rounded-lg text-gray-500 outline-none hover:bg-gray-100 hover:text-slate-950 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-500"
+                  className="grid h-6 w-4 shrink-0 place-items-center rounded-md text-gray-500 outline-none hover:bg-gray-100 hover:text-slate-950 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-500"
                   aria-expanded={!isCollapsed}
                   aria-label={`${isCollapsed ? "Expand" : "Collapse"} folder ${folder.name}`}
                   type="button"
@@ -175,25 +175,25 @@ export const FolderTreeRow = ({
                 >
                   {isCollapsed ? (
                     <IconChevronRight
-                      size={16}
+                      size={14}
                       stroke={1.5}
                       aria-hidden="true"
                       focusable="false"
                     />
                   ) : (
-                    <IconChevronDown size={16} stroke={1.5} aria-hidden="true" focusable="false" />
+                    <IconChevronDown size={14} stroke={1.5} aria-hidden="true" focusable="false" />
                   )}
                 </button>
               ) : (
-                <span className="h-7 w-5 shrink-0" aria-hidden="true" />
+                <span className="h-6 w-4 shrink-0" aria-hidden="true" />
               )}
               <button
-                className="flex min-h-9 min-w-0 flex-1 items-center gap-2 pr-2.5 text-left text-sm font-medium outline-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-500"
+                className="flex min-h-8 min-w-0 flex-1 items-center gap-2 pr-2 text-left text-[13px] font-medium outline-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-500"
                 type="button"
                 onClick={() => onSelectFolder(folder.id)}
               >
                 <FolderIcon
-                  size={21}
+                  size={17}
                   stroke={1.5}
                   color={folderIconColor}
                   aria-hidden="true"
@@ -205,12 +205,12 @@ export const FolderTreeRow = ({
               </button>
             </div>
             {hasBookmarkCount ? (
-              <span className="absolute top-0 right-8 grid h-9 w-7 place-items-center text-xs font-extrabold text-gray-400">
+              <span className="absolute top-0 right-7 grid h-8 w-6 place-items-center text-[11px] font-extrabold text-gray-400">
                 {folder.bookmarkCount}
               </span>
             ) : null}
             <button
-              className="absolute top-1/2 right-0 grid h-8 w-8 -translate-y-1/2 place-items-center rounded-lg border border-transparent text-gray-500 outline-none hover:border-gray-200 hover:bg-white hover:text-slate-950 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-500"
+              className="absolute top-1/2 right-0 grid h-7 w-7 -translate-y-1/2 place-items-center rounded-lg border border-transparent text-gray-500 outline-none hover:border-gray-200 hover:bg-white hover:text-slate-950 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-500"
               aria-label={`Folder actions for ${folder.name}`}
               type="button"
               onClick={(event) => {
@@ -219,7 +219,7 @@ export const FolderTreeRow = ({
                 onOpenMenu(folder, rect.left, rect.bottom + 4);
               }}
             >
-              <IconDotsVertical size={16} stroke={1.5} aria-hidden="true" focusable="false" />
+              <IconDotsVertical size={14} stroke={1.5} aria-hidden="true" focusable="false" />
             </button>
           </>
         )}
