@@ -72,14 +72,14 @@ export const InlineTagForm = ({
 
   return (
     <form
-      className="grid gap-1.5 rounded-lg border border-[#dfe4ef] bg-white p-1.5"
+      className="grid min-w-0 max-w-full gap-1.5 rounded-lg border border-[#dfe4ef] bg-white p-1.5"
       noValidate
       onSubmit={(event) => {
         event.preventDefault();
         submitTag();
       }}
     >
-      <div className="flex items-center gap-1.5">
+      <div className="flex min-w-0 items-center gap-1.5">
         <span
           className="h-3 w-3 shrink-0 rounded-full"
           style={{ backgroundColor: color }}
@@ -105,7 +105,7 @@ export const InlineTagForm = ({
           onInput={(event) => updateName(event.currentTarget.value)}
         />
         <button
-          className="grid h-7 w-6 place-items-center rounded-lg border border-transparent bg-transparent text-[#697080] outline-none hover:bg-[#f7f8fc] hover:text-[#242833] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#3b8df5]"
+          className="grid h-7 w-6 shrink-0 place-items-center rounded-lg border border-transparent bg-transparent text-[#697080] outline-none hover:bg-[#f7f8fc] hover:text-[#242833] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#3b8df5]"
           aria-label="Cancel"
           disabled={isPending}
           title="Cancel"
@@ -115,7 +115,7 @@ export const InlineTagForm = ({
           <IconX size={14} stroke={1.5} aria-hidden="true" focusable="false" />
         </button>
         <button
-          className="grid h-7 w-7 place-items-center rounded-lg border border-transparent bg-transparent text-[#3b8df5] outline-none hover:bg-[#eef6ff] disabled:cursor-not-allowed disabled:text-[#91bff8] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#3b8df5]"
+          className="grid h-7 w-7 shrink-0 place-items-center rounded-lg border border-transparent bg-transparent text-[#3b8df5] outline-none hover:bg-[#eef6ff] disabled:cursor-not-allowed disabled:text-[#91bff8] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#3b8df5]"
           aria-label={isPending ? "Saving" : submitLabel}
           disabled={isPending}
           title={isPending ? "Saving" : submitLabel}
@@ -128,7 +128,7 @@ export const InlineTagForm = ({
           <IconCheck size={15} stroke={1.8} aria-hidden="true" focusable="false" />
         </button>
       </div>
-      <div className="flex flex-wrap gap-1" aria-label="Tag colors">
+      <div className="flex min-w-0 flex-wrap gap-1" aria-label="Tag colors">
         {TAG_COLORS.map((tagColor) => (
           <button
             className={[

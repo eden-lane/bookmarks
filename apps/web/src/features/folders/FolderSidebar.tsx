@@ -600,109 +600,118 @@ const TagSection = ({
   onOpenMenu: (tag: TagItem, x: number, y: number) => void;
   onSelectTag: (tagId: string) => void;
   onStartCreate: () => void;
-}) => (
-  <section className="grid gap-1 pt-3" aria-label={`${libraryName} tags`}>
-    <div
-      className="grid min-h-7 grid-cols-[minmax(0,1fr)_1.5rem_1.75rem] items-center"
-      style={{ marginLeft: `${folderRowIndent(1)}px` }}
-    >
-      <span className="text-xs font-medium tracking-[0.04em] text-gray-400 uppercase">Tags</span>
-      <button
-        className="col-start-3 grid h-7 w-7 place-items-center justify-self-center rounded-lg border border-transparent text-gray-500 outline-none hover:border-gray-200 hover:bg-white hover:text-slate-950 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-500"
-        aria-label={`Create tag in ${libraryName}`}
-        type="button"
-        onClick={onStartCreate}
-      >
-        <IconTagPlus size={14} stroke={1.5} aria-hidden="true" focusable="false" />
-      </button>
-    </div>
-    {isLoading ? (
-      <p className="m-0 px-2.5 py-1 text-xs font-medium text-gray-400">Loading tags</p>
-    ) : null}
-    {isError ? (
-      <p className="m-0 px-2.5 py-1 text-xs font-medium text-orange-700">
-        Tags could not be loaded.
-      </p>
-    ) : null}
-    {creatingTagLibraryId === libraryId ? (
-      <div style={{ marginLeft: `${folderRowIndent(1)}px` }}>
-        <InlineTagForm
-          error={createError ? "Tag could not be created." : null}
-          isPending={createPending}
-          onCancel={onCancelCreate}
-          onSubmit={onCreateTag}
-        />
-      </div>
-    ) : null}
-    {tags.map((tag) => (
+}) => {
+  const rowIndent = folderRowIndent(1);
+  const rowStyle = { marginLeft: `${rowIndent}px`, width: `calc(100% - ${rowIndent}px)` };
+
+  return (
+    <section className="grid min-w-0 gap-1 pt-3" aria-label={`${libraryName} tags`}>
       <div
-        className={[
-          "group grid min-h-8 grid-cols-[minmax(0,1fr)_1.5rem_1.75rem] items-center rounded-xl text-[13px] font-medium",
-          activeTagId === tag.id ? "bg-gray-100/90 text-slate-950" : "text-gray-700 hover:bg-white/70"
-        ].join(" ")}
-        key={tag.id}
-        style={{ marginLeft: `${folderRowIndent(1)}px` }}
-        onContextMenu={(event) => {
-          event.preventDefault();
-          onOpenMenu(tag, event.clientX, event.clientY);
-        }}
+        className="grid min-h-7 grid-cols-[minmax(0,1fr)_1.5rem_1.75rem] items-center"
+        style={rowStyle}
       >
-        {editingTagId === tag.id ? (
-          <div className="col-span-3 min-w-0">
-            <InlineTagForm
-              defaultColor={tag.color}
-              defaultName={tag.name}
-              error={editError ? "Tag could not be updated." : null}
-              isPending={editPending}
-              submitLabel="Save tag"
-              onCancel={onCancelEdit}
-              onSubmit={(value) => onEditTag(tag.id, value)}
-            />
-          </div>
-        ) : (
-          <>
-            <button
-              className="flex min-h-8 min-w-0 items-center gap-0.5 rounded-xl pr-2 text-left outline-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-500"
-              aria-label={tag.name}
-              type="button"
-              onClick={() => onSelectTag(tag.id)}
-            >
-              <span className="h-6 w-4 shrink-0" aria-hidden="true" />
-              <span className="flex min-h-8 min-w-0 flex-1 items-center gap-2">
-                <IconTag
-                  size={16}
-                  stroke={1.5}
-                  color={tag.color ?? "#697080"}
-                  aria-hidden="true"
-                  focusable="false"
-                />
-                <span className="truncate">{tag.name}</span>
-              </span>
-            </button>
-            <span
-              className="grid h-8 place-items-center text-[11px] font-medium text-gray-400"
-              aria-hidden="true"
-            >
-              {tag.savedItemCount > 0 ? tag.savedItemCount : null}
-            </span>
-            <button
-              className="grid h-7 w-7 place-items-center justify-self-center rounded-lg border border-transparent text-gray-500 opacity-0 outline-none transition-opacity hover:border-gray-200 hover:bg-white hover:text-slate-950 hover:opacity-100 group-hover:opacity-100 group-focus-within:opacity-100 focus-visible:opacity-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-500"
-              aria-label={`Tag actions for ${tag.name}`}
-              type="button"
-              onClick={(event) => {
-                event.stopPropagation();
-                const rect = event.currentTarget.getBoundingClientRect();
-                onOpenMenu(tag, rect.left, rect.bottom + 4);
-              }}
-            >
-              <IconDotsVertical size={14} stroke={1.5} aria-hidden="true" focusable="false" />
-            </button>
-          </>
-        )}
+        <span className="text-xs font-medium tracking-[0.04em] text-gray-400 uppercase">
+          Tags
+        </span>
+        <button
+          className="col-start-3 grid h-7 w-7 place-items-center justify-self-center rounded-lg border border-transparent text-gray-500 outline-none hover:border-gray-200 hover:bg-white hover:text-slate-950 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-500"
+          aria-label={`Create tag in ${libraryName}`}
+          type="button"
+          onClick={onStartCreate}
+        >
+          <IconTagPlus size={14} stroke={1.5} aria-hidden="true" focusable="false" />
+        </button>
       </div>
-    ))}
-  </section>
-);
+      {isLoading ? (
+        <p className="m-0 px-2.5 py-1 text-xs font-medium text-gray-400">Loading tags</p>
+      ) : null}
+      {isError ? (
+        <p className="m-0 px-2.5 py-1 text-xs font-medium text-orange-700">
+          Tags could not be loaded.
+        </p>
+      ) : null}
+      {creatingTagLibraryId === libraryId ? (
+        <div className="min-w-0" style={rowStyle}>
+          <InlineTagForm
+            error={createError ? "Tag could not be created." : null}
+            isPending={createPending}
+            onCancel={onCancelCreate}
+            onSubmit={onCreateTag}
+          />
+        </div>
+      ) : null}
+      {tags.map((tag) => (
+        <div
+          className={[
+            "group grid min-h-8 grid-cols-[minmax(0,1fr)_1.5rem_1.75rem] items-center rounded-xl text-[13px] font-medium",
+            activeTagId === tag.id
+              ? "bg-gray-100/90 text-slate-950"
+              : "text-gray-700 hover:bg-white/70"
+          ].join(" ")}
+          key={tag.id}
+          style={rowStyle}
+          onContextMenu={(event) => {
+            event.preventDefault();
+            onOpenMenu(tag, event.clientX, event.clientY);
+          }}
+        >
+          {editingTagId === tag.id ? (
+            <div className="col-span-3 min-w-0">
+              <InlineTagForm
+                defaultColor={tag.color}
+                defaultName={tag.name}
+                error={editError ? "Tag could not be updated." : null}
+                isPending={editPending}
+                submitLabel="Save tag"
+                onCancel={onCancelEdit}
+                onSubmit={(value) => onEditTag(tag.id, value)}
+              />
+            </div>
+          ) : (
+            <>
+              <button
+                className="flex min-h-8 min-w-0 items-center gap-0.5 rounded-xl pr-2 text-left outline-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-500"
+                aria-label={tag.name}
+                type="button"
+                onClick={() => onSelectTag(tag.id)}
+              >
+                <span className="h-6 w-4 shrink-0" aria-hidden="true" />
+                <span className="flex min-h-8 min-w-0 flex-1 items-center gap-2">
+                  <IconTag
+                    size={16}
+                    stroke={1.5}
+                    color={tag.color ?? "#697080"}
+                    aria-hidden="true"
+                    focusable="false"
+                  />
+                  <span className="truncate">{tag.name}</span>
+                </span>
+              </button>
+              <span
+                className="grid h-8 place-items-center text-[11px] font-medium text-gray-400"
+                aria-hidden="true"
+              >
+                {tag.savedItemCount > 0 ? tag.savedItemCount : null}
+              </span>
+              <button
+                className="grid h-7 w-7 place-items-center justify-self-center rounded-lg border border-transparent text-gray-500 opacity-0 outline-none transition-opacity hover:border-gray-200 hover:bg-white hover:text-slate-950 hover:opacity-100 group-hover:opacity-100 group-focus-within:opacity-100 focus-visible:opacity-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-500"
+                aria-label={`Tag actions for ${tag.name}`}
+                type="button"
+                onClick={(event) => {
+                  event.stopPropagation();
+                  const rect = event.currentTarget.getBoundingClientRect();
+                  onOpenMenu(tag, rect.left, rect.bottom + 4);
+                }}
+              >
+                <IconDotsVertical size={14} stroke={1.5} aria-hidden="true" focusable="false" />
+              </button>
+            </>
+          )}
+        </div>
+      ))}
+    </section>
+  );
+};
 
 const LibraryRootDropZone = ({
   isActive,
