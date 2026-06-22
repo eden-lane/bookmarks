@@ -29,7 +29,6 @@ REGISTRATION_MODE=first-user-only
 DATABASE_URL=${{Postgres.DATABASE_URL}}
 REDIS_URL=${{Redis.REDIS_URL}}
 MEILISEARCH_URL=http://${{Meilisearch.RAILWAY_PRIVATE_DOMAIN}}:7700
-MEILI_ENV=production
 NODE_ENV=production
 ```
 
@@ -39,15 +38,11 @@ NODE_ENV=production
 APP_ORIGINS=https://your-domain.example
 ```
 
-## Meilisearch variables
+## Meilisearch storage
 
-Set this on the `Meilisearch` service:
+Attach a volume to the `Meilisearch` service at `/meili_data` so search indexes survive restarts.
 
-```sh
-MEILI_ENV=production
-```
-
-If the template later exposes a Meilisearch admin key, also set `MEILI_MASTER_KEY` and update the app to pass it to the Meilisearch client.
+Leave Meilisearch unauthenticated until the app supports passing `MEILI_MASTER_KEY` to its Meilisearch client. If the template later exposes a Meilisearch admin key, also set `MEILI_MASTER_KEY` and update the app to send that key.
 
 ## Template settings
 
@@ -60,8 +55,8 @@ In the Railway template composer:
 5. Add descriptions for every variable before publishing.
 6. Use a 1:1 transparent icon for the template and each service.
 
-Railway gives you the template URL after creation. Add its code to the README button:
+The current Railway template draft is `biCX3T`. The deploy button is:
 
 ```md
-[![Deploy on Railway](https://railway.com/button.svg)](https://railway.com/deploy/<template-code>?utm_medium=integration&utm_source=template&utm_campaign=shelf)
+[![Deploy on Railway](https://railway.com/button.svg)](https://railway.com/deploy/biCX3T?utm_medium=integration&utm_source=template&utm_campaign=shelf)
 ```
