@@ -1,9 +1,12 @@
 import pg from "pg";
 import { drizzle } from "drizzle-orm/node-postgres";
 import { migrate } from "drizzle-orm/node-postgres/migrator";
+import { dirname, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 
 const databaseUrl =
   process.env.DATABASE_URL ?? "postgres://shelf:shelf@127.0.0.1:5432/shelf";
+const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 
 const pool = new pg.Pool({
   connectionString: databaseUrl
@@ -11,7 +14,7 @@ const pool = new pg.Pool({
 
 try {
   await migrate(drizzle(pool), {
-    migrationsFolder: "packages/api/drizzle",
+    migrationsFolder: resolve(repoRoot, "packages/api/drizzle"),
     migrationsTable: "__drizzle_migrations",
     migrationsSchema: "public"
   });

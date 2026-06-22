@@ -3,7 +3,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "bun --hot src/index.ts",
+    "dev": "bun ../../scripts/migrate.mjs && bun --hot src/index.ts",
     "search:reindex": "bun src/reindexSearch.ts",
     "test": "bun test",
     "typecheck": "tsc --noEmit"

@@ -31,6 +31,8 @@ The Compose stack starts:
 - Redis queue backend
 - Meilisearch search service
 
+The API dev server applies pending database migrations before it starts.
+
 The oRPC endpoint is mounted at `http://localhost:3000/rpc`.
 
 ## Railway deployment
