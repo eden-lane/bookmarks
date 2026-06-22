@@ -393,11 +393,6 @@ export const FolderSidebar = ({
                           onToggleFolder={toggleCollapsedFolder}
                         />
                       ))}
-                      {roots.length === 0 ? (
-                        <p className="m-0 px-2.5 py-1 text-xs font-bold text-gray-400">
-                          No folders
-                        </p>
-                      ) : null}
                     </section>
                     <TagSection
                       activeTagId={activeTagId}
@@ -686,9 +681,6 @@ const TagSection = ({
         )}
       </div>
     ))}
-    {!isLoading && tags.length === 0 ? (
-      <p className="m-0 px-2.5 py-1 text-xs font-bold text-gray-400">No tags</p>
-    ) : null}
   </section>
 );
 
