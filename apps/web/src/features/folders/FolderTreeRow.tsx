@@ -205,7 +205,7 @@ export const FolderTreeRow = ({
               </button>
             </div>
             {hasSavedItemCount ? (
-              <span className="absolute top-0 right-7 grid h-8 w-6 place-items-center text-[11px] font-extrabold text-gray-400">
+              <span className="absolute top-0 right-7 grid h-8 w-6 place-items-center text-[11px] font-medium text-gray-400">
                 {folder.savedItemCount}
               </span>
             ) : null}

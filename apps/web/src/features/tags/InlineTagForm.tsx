@@ -146,7 +146,7 @@ export const InlineTagForm = ({
           </button>
         ))}
       </div>
-      {error ? <p className="m-0 text-xs font-bold text-[#9a4d0a]">{error}</p> : null}
+      {error ? <p className="m-0 text-xs font-medium text-[#9a4d0a]">{error}</p> : null}
     </form>
   );
 };

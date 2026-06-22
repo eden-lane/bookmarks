@@ -64,7 +64,7 @@ export const DeleteFolderDialog = ({
         <Dialog.Backdrop className="fixed inset-0 z-40 bg-[#101522]/45" />
         <Dialog.Popup className="fixed top-1/2 left-1/2 z-50 grid w-[min(calc(100vw-32px),460px)] -translate-x-1/2 -translate-y-1/2 gap-5 rounded-lg border border-[#e4e7ef] bg-white p-5 text-[#242833] shadow-[0_24px_80px_rgb(22_28_43_/_0.22)] outline-none">
           <div className="grid gap-1 pr-9">
-            <Dialog.Title className="text-lg leading-[1.25] font-extrabold">
+            <Dialog.Title className="text-lg leading-[1.25] font-medium">
               Delete {folder.name}
             </Dialog.Title>
             <Dialog.Description className="text-sm leading-6 text-[#697080]">
@@ -89,7 +89,7 @@ export const DeleteFolderDialog = ({
               });
             }}
           >
-            <label className="flex items-start gap-3 rounded-lg border border-[#dfe4ef] bg-[#fbfcff] p-3 text-sm font-bold">
+            <label className="flex items-start gap-3 rounded-lg border border-[#dfe4ef] bg-[#fbfcff] p-3 text-sm font-medium">
               <input
                 className="mt-1"
                 checked={mode === "move"}
@@ -100,7 +100,7 @@ export const DeleteFolderDialog = ({
               <span className="grid gap-2">
                 <span>Move saved items to Inbox or another folder</span>
                 <select
-                  className="min-h-10 rounded-lg border border-[#dfe4ef] bg-white px-3 text-sm font-semibold text-[#242833] outline-none disabled:bg-[#f3f5f9] disabled:text-[#9aa1ad] focus:border-[#3b8df5] focus:ring-3 focus:ring-[#d9eaff]"
+                  className="min-h-10 rounded-lg border border-[#dfe4ef] bg-white px-3 text-sm font-medium text-[#242833] outline-none disabled:bg-[#f3f5f9] disabled:text-[#9aa1ad] focus:border-[#3b8df5] focus:ring-3 focus:ring-[#d9eaff]"
                   disabled={mode !== "move"}
                   value={destinationFolderId}
                   onChange={(event) => setDestinationFolderId(event.target.value)}
@@ -114,7 +114,7 @@ export const DeleteFolderDialog = ({
                 </select>
               </span>
             </label>
-            <label className="flex items-start gap-3 rounded-lg border border-[#dfe4ef] bg-[#fbfcff] p-3 text-sm font-bold">
+            <label className="flex items-start gap-3 rounded-lg border border-[#dfe4ef] bg-[#fbfcff] p-3 text-sm font-medium">
               <input
                 className="mt-1"
                 checked={mode === "delete"}
@@ -125,20 +125,20 @@ export const DeleteFolderDialog = ({
               <span>Remove saved items along with the folder</span>
             </label>
             {deleteFolderMutation.isError ? (
-              <p className="m-0 rounded-lg border border-[#f0b37e] bg-[#fff8f1] px-3 py-2 text-sm font-bold text-[#9a4d0a]">
+              <p className="m-0 rounded-lg border border-[#f0b37e] bg-[#fff8f1] px-3 py-2 text-sm font-medium text-[#9a4d0a]">
                 Folder could not be deleted.
               </p>
             ) : null}
             <div className="flex justify-end gap-2">
               <Dialog.Close
-                className="min-h-10 rounded-lg border border-[#dfe4ef] bg-white px-3 text-sm font-extrabold text-[#4b5262] outline-none hover:bg-[#f7f8fc] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#3b8df5]"
+                className="min-h-10 rounded-lg border border-[#dfe4ef] bg-white px-3 text-sm font-medium text-[#4b5262] outline-none hover:bg-[#f7f8fc] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#3b8df5]"
                 disabled={deleteFolderMutation.isPending}
                 type="button"
               >
                 Cancel
               </Dialog.Close>
               <button
-                className="min-h-10 rounded-lg border border-[#b42318] bg-[#b42318] px-3 text-sm font-extrabold text-white outline-none hover:bg-[#961b12] disabled:cursor-not-allowed disabled:border-[#e7a6a0] disabled:bg-[#e7a6a0] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#3b8df5]"
+                className="min-h-10 rounded-lg border border-[#b42318] bg-[#b42318] px-3 text-sm font-medium text-white outline-none hover:bg-[#961b12] disabled:cursor-not-allowed disabled:border-[#e7a6a0] disabled:bg-[#e7a6a0] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#3b8df5]"
                 disabled={submitDisabled}
                 type="submit"
               >

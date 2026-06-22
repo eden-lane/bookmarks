@@ -1020,7 +1020,7 @@ export const ProductShell = () => {
       />
       {moveNotification ? (
         <div
-          className="fixed right-4 bottom-4 z-40 rounded-lg border border-[#dfe4ef] bg-white px-3 py-2 text-sm font-extrabold text-[#242833] shadow-[0_18px_55px_rgb(22_28_43_/_0.16)]"
+          className="fixed right-4 bottom-4 z-40 rounded-lg border border-[#dfe4ef] bg-white px-3 py-2 text-sm font-medium text-[#242833] shadow-[0_18px_55px_rgb(22_28_43_/_0.16)]"
           role="status"
           aria-live="polite"
         >
@@ -1320,8 +1320,8 @@ const SavedItemDragPreview = ({ item }: { item: SavedItem }) => {
             )}
           </div>
           <div className="min-w-0">
-            <h2 className="m-0 truncate text-lg leading-[1.25] font-extrabold">{title}</h2>
-            <p className="mt-1 mb-0 truncate text-sm font-semibold text-[#2f80ed]">{item.url}</p>
+            <h2 className="m-0 truncate text-lg leading-[1.25] font-medium">{title}</h2>
+            <p className="mt-1 mb-0 truncate text-sm font-medium text-[#2f80ed]">{item.url}</p>
           </div>
         </div>
       </div>
@@ -1350,7 +1350,7 @@ const FolderDragPreview = ({ folder }: { folder: FolderItem }) => {
           <span className="truncate">{folder.name}</span>
         </span>
       </div>
-      <span className="grid h-9 place-items-center text-xs font-extrabold text-gray-400">
+      <span className="grid h-9 place-items-center text-xs font-medium text-gray-400">
         {folder.savedItemCount > 0 ? folder.savedItemCount : null}
       </span>
       <span aria-hidden="true" />
@@ -1372,7 +1372,7 @@ const FolderBreadcrumbs = ({
 
   return (
     <h1
-      className="m-0 flex min-w-0 flex-wrap items-center gap-x-1 gap-y-0.5 text-[15px] leading-5 font-semibold"
+      className="m-0 flex min-w-0 flex-wrap items-center gap-x-1 gap-y-0.5 text-[15px] leading-5 font-medium"
       aria-label={label}
     >
       <BreadcrumbLink route={inboxRoute} title="Inbox" onNavigate={onNavigate}>
@@ -1421,7 +1421,7 @@ const TagBreadcrumb = ({
   onNavigate: (route: ActiveRoute) => void;
 }) => (
   <h1
-    className="m-0 flex min-w-0 flex-wrap items-center gap-x-1 gap-y-0.5 text-[15px] leading-5 font-semibold"
+    className="m-0 flex min-w-0 flex-wrap items-center gap-x-1 gap-y-0.5 text-[15px] leading-5 font-medium"
     aria-label={tag.name}
   >
     <BreadcrumbLink
@@ -1460,7 +1460,7 @@ const SearchBreadcrumb = ({
   onNavigate: (route: ActiveRoute) => void;
 }) => (
   <h1
-    className="m-0 flex min-w-0 flex-wrap items-center gap-x-1 gap-y-0.5 text-[15px] leading-5 font-semibold"
+    className="m-0 flex min-w-0 flex-wrap items-center gap-x-1 gap-y-0.5 text-[15px] leading-5 font-medium"
     aria-label="Search"
   >
     <BreadcrumbLink

@@ -64,7 +64,7 @@ export const AuthScreen = ({ registration }: AuthScreenProps) => {
             <IconLock size={21} stroke={1.6} aria-hidden="true" focusable="false" />
           </span>
           <div className="min-w-0">
-            <h1 className="m-0 text-[17px] leading-6 font-semibold">Shelf</h1>
+            <h1 className="m-0 text-[17px] leading-6 font-medium">Shelf</h1>
             <p className="m-0 text-sm leading-5 text-gray-500">
               {activeMode === "signup" ? "Create the first account" : "Log in to continue"}
             </p>
@@ -158,7 +158,7 @@ export const AuthScreen = ({ registration }: AuthScreenProps) => {
           ) : null}
 
           <button
-            className="mt-1 inline-flex h-10 items-center justify-center gap-2 rounded-lg bg-slate-950 px-4 text-sm font-semibold text-white outline-none hover:bg-slate-800 disabled:cursor-not-allowed disabled:bg-gray-300 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-500"
+            className="mt-1 inline-flex h-10 items-center justify-center gap-2 rounded-lg bg-slate-950 px-4 text-sm font-medium text-white outline-none hover:bg-slate-800 disabled:cursor-not-allowed disabled:bg-gray-300 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-500"
             disabled={!canSubmit}
             type="submit"
           >

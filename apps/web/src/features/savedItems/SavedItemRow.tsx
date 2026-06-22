@@ -131,11 +131,11 @@ export const SavedItemRow = ({
                   )}
                 </div>
                 <div className="min-w-0">
-                  <h2 className="m-0 truncate text-lg leading-[1.25] font-extrabold">
+                  <h2 className="m-0 truncate text-lg leading-[1.25] font-medium">
                     {title}
                   </h2>
                   <a
-                    className="mt-1 flex min-w-0 items-center gap-1.5 text-sm font-semibold text-[#2f80ed] no-underline hover:underline"
+                    className="mt-1 flex min-w-0 items-center gap-1.5 text-sm font-medium text-[#2f80ed] no-underline hover:underline"
                     href={item.url}
                     rel="noreferrer"
                     target="_blank"
@@ -148,7 +148,7 @@ export const SavedItemRow = ({
               <div className="flex w-fit shrink-0 items-center gap-2">
                 {showFolderName ? (
                   <span
-                    className="flex items-center gap-1.5 rounded-lg border border-[#e7eaf1] bg-[#fbfcff] px-2.5 py-1 text-xs font-extrabold text-[#697080]"
+                    className="flex items-center gap-1.5 rounded-lg border border-[#e7eaf1] bg-[#fbfcff] px-2.5 py-1 text-xs font-medium text-[#697080]"
                     aria-label={`Saved item location ${contextLabel}`}
                   >
                     <IconFolder size={16} stroke={1.5} aria-hidden="true" focusable="false" />
@@ -180,7 +180,7 @@ export const SavedItemRow = ({
                 {item.description}
               </p>
             ) : null}
-            <time className="text-xs font-bold text-[#858b9a]" dateTime={item.createdAt}>
+            <time className="text-xs font-medium text-[#858b9a]" dateTime={item.createdAt}>
               Added {formatSavedItemDate(item.createdAt)}
             </time>
           </div>

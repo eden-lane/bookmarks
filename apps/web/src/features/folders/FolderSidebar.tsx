@@ -245,12 +245,12 @@ export const FolderSidebar = ({
       </div>
       <div className="grid gap-3">
         {isLoading ? (
-          <p className="m-0 rounded-xl border border-gray-200 bg-white px-2.5 py-2 text-sm font-bold text-gray-500">
+          <p className="m-0 rounded-xl border border-gray-200 bg-white px-2.5 py-2 text-sm font-medium text-gray-500">
             Loading folders
           </p>
         ) : null}
         {isError ? (
-          <p className="m-0 rounded-xl border border-orange-200 bg-white px-2.5 py-2 text-sm font-bold text-orange-700">
+          <p className="m-0 rounded-xl border border-orange-200 bg-white px-2.5 py-2 text-sm font-medium text-orange-700">
             Folders could not be loaded.
           </p>
         ) : null}
@@ -318,7 +318,7 @@ export const FolderSidebar = ({
                         className="grid min-h-7 grid-cols-[minmax(0,1fr)_1.75rem] items-center"
                         style={{ marginLeft: `${folderRowIndent(1)}px` }}
                       >
-                        <span className="text-xs font-bold tracking-[0.04em] text-gray-400 uppercase">
+                        <span className="text-xs font-medium tracking-[0.04em] text-gray-400 uppercase">
                           Folders
                         </span>
                         <button
@@ -603,7 +603,7 @@ const TagSection = ({
       className="grid min-h-7 grid-cols-[minmax(0,1fr)_1.5rem_1.75rem] items-center"
       style={{ marginLeft: `${folderRowIndent(1)}px` }}
     >
-      <span className="text-xs font-bold tracking-[0.04em] text-gray-400 uppercase">Tags</span>
+      <span className="text-xs font-medium tracking-[0.04em] text-gray-400 uppercase">Tags</span>
       <button
         className="col-start-3 grid h-7 w-7 place-items-center justify-self-center rounded-lg border border-transparent text-gray-500 outline-none hover:border-gray-200 hover:bg-white hover:text-slate-950 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-500"
         aria-label={`Create tag in ${libraryName}`}
@@ -614,10 +614,10 @@ const TagSection = ({
       </button>
     </div>
     {isLoading ? (
-      <p className="m-0 px-2.5 py-1 text-xs font-bold text-gray-400">Loading tags</p>
+      <p className="m-0 px-2.5 py-1 text-xs font-medium text-gray-400">Loading tags</p>
     ) : null}
     {isError ? (
-      <p className="m-0 px-2.5 py-1 text-xs font-bold text-orange-700">
+      <p className="m-0 px-2.5 py-1 text-xs font-medium text-orange-700">
         Tags could not be loaded.
       </p>
     ) : null}
@@ -677,7 +677,7 @@ const TagSection = ({
               </span>
             </button>
             <span
-              className="grid h-8 place-items-center text-[11px] font-extrabold text-gray-400"
+              className="grid h-8 place-items-center text-[11px] font-medium text-gray-400"
               aria-hidden="true"
             >
               {tag.savedItemCount > 0 ? tag.savedItemCount : null}

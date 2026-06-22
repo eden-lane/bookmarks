@@ -188,7 +188,7 @@ export const SavedItemsWorkspace = ({
             focusable="false"
           />
           <div className="min-w-0">
-            <h2 id="items-error-title" className="m-0 text-lg font-extrabold">
+            <h2 id="items-error-title" className="m-0 text-lg font-medium">
               Items could not be loaded
             </h2>
             <p className="mt-1 mb-0 text-sm leading-6 text-[#697080]">
@@ -197,7 +197,7 @@ export const SavedItemsWorkspace = ({
           </div>
         </div>
         <button
-          className="flex min-h-10 w-fit items-center gap-2 rounded-lg border border-[#dfe4ef] bg-white px-3 text-sm font-extrabold text-[#4b5262] outline-none hover:bg-[#f7f8fc] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#3b8df5]"
+          className="flex min-h-10 w-fit items-center gap-2 rounded-lg border border-[#dfe4ef] bg-white px-3 text-sm font-medium text-[#4b5262] outline-none hover:bg-[#f7f8fc] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#3b8df5]"
           type="button"
           onClick={() => void savedItems.refetch()}
         >
@@ -222,7 +222,7 @@ export const SavedItemsWorkspace = ({
           focusable="false"
         />
         <div className="min-w-0">
-          <h2 id="empty-items-title" className="mb-2 text-2xl leading-[1.2] font-bold">
+          <h2 id="empty-items-title" className="mb-2 text-2xl leading-[1.2] font-medium">
             No items yet
           </h2>
           <p className="mb-0 max-w-full text-[#697080] sm:max-w-[56ch]">
@@ -259,17 +259,17 @@ export const SavedItemsWorkspace = ({
         ))}
         <div ref={loadMoreRef} className="min-h-6" aria-hidden="true" />
         {savedItems.isFetchingNextPage ? (
-          <p className="m-0 rounded-lg border border-[#e4e7ef] bg-white px-4 py-3 text-sm font-bold text-[#697080]">
+          <p className="m-0 rounded-lg border border-[#e4e7ef] bg-white px-4 py-3 text-sm font-medium text-[#697080]">
             Loading more items
           </p>
         ) : null}
         {!savedItems.hasNextPage ? (
-          <p className="m-0 px-1 py-2 text-sm font-bold text-[#858b9a]">All items loaded</p>
+          <p className="m-0 px-1 py-2 text-sm font-medium text-[#858b9a]">All items loaded</p>
         ) : null}
       </section>
       {notification ? (
         <div
-          className="fixed right-4 bottom-4 z-40 rounded-lg border border-[#dfe4ef] bg-white px-3 py-2 text-sm font-extrabold text-[#242833] shadow-[0_18px_55px_rgb(22_28_43_/_0.16)]"
+          className="fixed right-4 bottom-4 z-40 rounded-lg border border-[#dfe4ef] bg-white px-3 py-2 text-sm font-medium text-[#242833] shadow-[0_18px_55px_rgb(22_28_43_/_0.16)]"
           role="status"
           aria-live="polite"
         >

@@ -11,7 +11,7 @@ export const SearchScopeControl = ({
 }) => (
   <section className="flex w-full min-w-0 justify-start" aria-label="Search filters">
     <div
-      className="grid max-w-full grid-cols-2 rounded-lg border border-[#dfe4ef] bg-[#f7f8fc] p-1 text-sm font-extrabold"
+      className="grid max-w-full grid-cols-2 rounded-lg border border-[#dfe4ef] bg-[#f7f8fc] p-1 text-sm font-medium"
       aria-label="Search scope"
       role="group"
     >

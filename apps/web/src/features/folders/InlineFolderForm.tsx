@@ -128,7 +128,7 @@ export const InlineFolderForm = ({
         <IconCheck size={15} stroke={1.8} aria-hidden="true" focusable="false" />
       </button>
       {error ? (
-        <p className="col-span-3 m-0 text-xs font-bold text-[#9a4d0a]">{error}</p>
+        <p className="col-span-3 m-0 text-xs font-medium text-[#9a4d0a]">{error}</p>
       ) : null}
     </form>
   );
