@@ -22,6 +22,7 @@ import { Hono } from "hono";
 import { deleteCookie, getCookie, setCookie } from "hono/cookie";
 import { cors } from "hono/cors";
 import { rateLimiter } from "hono-rate-limiter";
+import { extname, resolve, sep } from "node:path";
 
 export interface AppOptions {
   dependencies: HealthDependencies & { db?: Database };
@@ -33,6 +34,7 @@ export interface AppOptions {
   registrationMode?: RegistrationMode;
   allowedOrigins?: string[];
   sessionCookieSecure?: boolean;
+  staticDir?: string | null;
 }
 
 const SESSION_COOKIE_NAME = "shelf_session";
@@ -224,6 +226,16 @@ export const createApp = (options: AppOptions) => {
     return context.notFound();
   });
 
+  if (options.staticDir) {
+    const staticRoot = resolve(options.staticDir);
+
+    app.get("*", async (context) => {
+      const response = await readStaticResponse(staticRoot, context.req.path);
+
+      return response ?? context.notFound();
+    });
+  }
+
   return app;
 
   async function resolveCurrentUser(context: Parameters<typeof getCookie>[0]) {
@@ -247,7 +259,7 @@ export const createApp = (options: AppOptions) => {
 
     const origin = context.req.header("origin");
 
-    if (!origin || !allowedOrigins.includes(origin)) {
+    if (!origin || (!allowedOrigins.includes(origin) && origin !== requestOrigin(context))) {
       return context.json({ error: "Origin is not allowed" }, 403);
     }
 
@@ -268,6 +280,81 @@ export const createApp = (options: AppOptions) => {
     });
   }
 };
+
+const requestOrigin = (context: Parameters<typeof getCookie>[0]) => {
+  const forwardedHost = context.req.header("x-forwarded-host");
+  const requestUrl = new URL(context.req.url);
+  const host = forwardedHost ?? context.req.header("host") ?? requestUrl.host;
+
+  if (!host) {
+    return null;
+  }
+
+  const forwardedProto = context.req.header("x-forwarded-proto");
+  const protocol = forwardedProto ?? requestUrl.protocol.replace(/:$/, "");
+
+  return `${protocol}://${host}`;
+};
+
+const readStaticResponse = async (staticRoot: string, requestPath: string) => {
+  const pathname = safeDecodePath(requestPath);
+
+  if (!pathname) {
+    return null;
+  }
+
+  const assetPath = pathname === "/" ? "/index.html" : pathname;
+  const requestedFile = resolve(staticRoot, `.${assetPath}`);
+  const fileResponse = await responseFromFile(staticRoot, requestedFile, assetPath);
+
+  if (fileResponse) {
+    return fileResponse;
+  }
+
+  if (extname(pathname)) {
+    return null;
+  }
+
+  return responseFromFile(staticRoot, resolve(staticRoot, "index.html"), "/index.html");
+};
+
+const safeDecodePath = (requestPath: string) => {
+  try {
+    return decodeURIComponent(requestPath.split("?")[0] ?? "/");
+  } catch {
+    return null;
+  }
+};
+
+const responseFromFile = async (staticRoot: string, filePath: string, requestPath: string) => {
+  if (!isInsideRoot(staticRoot, filePath)) {
+    return null;
+  }
+
+  const file = Bun.file(filePath);
+
+  if (!(await file.exists())) {
+    return null;
+  }
+
+  const headers = new Headers();
+
+  if (file.type) {
+    headers.set("content-type", file.type);
+  }
+
+  headers.set(
+    "cache-control",
+    requestPath.startsWith("/assets/")
+      ? "public, max-age=31536000, immutable"
+      : "no-cache"
+  );
+
+  return new Response(file, { headers });
+};
+
+const isInsideRoot = (staticRoot: string, filePath: string) =>
+  filePath === staticRoot || filePath.startsWith(`${staticRoot}${sep}`);
 
 const readString = (body: unknown, key: string) => {
   if (!body || typeof body !== "object" || Array.isArray(body)) {

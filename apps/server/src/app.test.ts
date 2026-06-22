@@ -2,6 +2,9 @@ import { describe, expect, spyOn, test } from "bun:test";
 import type { SavedItemsStore, SavedItemSearchIndex } from "@shelf/api/savedItems";
 import type { HealthDependencies } from "@shelf/api/health";
 import { Buffer } from "node:buffer";
+import { mkdtemp, rm, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { createApp } from "./app";
 
 const DEV_USER_ID = "00000000-0000-4000-8000-000000000001";
@@ -112,6 +115,75 @@ describe("health endpoint", () => {
     expect(response.status).toBe(200);
     expect(body.status).toBe("ok");
     expect(body.services.database).toBe("ok");
+  });
+});
+
+describe("production web serving", () => {
+  test("serves static assets and falls back to the app shell for client routes", async () => {
+    const staticDir = await mkdtemp(join(tmpdir(), "shelf-static-"));
+
+    try {
+      await writeFile(join(staticDir, "index.html"), "<div id=\"root\"></div>");
+      await writeFile(join(staticDir, "app.css"), "body { color: black; }");
+
+      const app = createApp({
+        dependencies: dependencies(),
+        staticDir
+      });
+
+      const assetResponse = await app.request("/app.css");
+      const routeResponse = await app.request("/me/personal/folder/123");
+
+      expect(assetResponse.status).toBe(200);
+      expect(assetResponse.headers.get("cache-control")).toBe("no-cache");
+      expect(await assetResponse.text()).toBe("body { color: black; }");
+      expect(routeResponse.status).toBe(200);
+      expect(await routeResponse.text()).toBe("<div id=\"root\"></div>");
+    } finally {
+      await rm(staticDir, { force: true, recursive: true });
+    }
+  });
+});
+
+describe("origin checks", () => {
+  test("allows same-origin mutating requests without an explicit allow-list entry", async () => {
+    const app = createApp({
+      allowedOrigins: [],
+      dependencies: dependencies()
+    });
+
+    const response = await app.request(
+      new Request("https://shelf.example/auth/signup", {
+        body: JSON.stringify({ email: "user@example.com", password: "password" }),
+        headers: {
+          "content-type": "application/json",
+          origin: "https://shelf.example"
+        },
+        method: "POST"
+      })
+    );
+
+    expect(response.status).not.toBe(403);
+  });
+
+  test("rejects cross-origin mutating requests outside the allow-list", async () => {
+    const app = createApp({
+      allowedOrigins: [],
+      dependencies: dependencies()
+    });
+
+    const response = await app.request(
+      new Request("https://shelf.example/auth/signup", {
+        body: JSON.stringify({ email: "user@example.com", password: "password" }),
+        headers: {
+          "content-type": "application/json",
+          origin: "https://other.example"
+        },
+        method: "POST"
+      })
+    );
+
+    expect(response.status).toBe(403);
   });
 });
 

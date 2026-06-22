@@ -31,6 +31,16 @@ The Compose stack starts:
 
 The oRPC endpoint is mounted at `http://localhost:3000/rpc`.
 
+## Railway deployment
+
+The production service is ready for Railway one-click templates:
+
+- `Dockerfile` builds the web app and runs the Bun/Hono server.
+- `railway.json` runs migrations before deploy, starts the server, and health-checks `/health`.
+- The server serves the React app and API from the same origin.
+
+Template setup notes live in [`docs/railway-template.md`](docs/railway-template.md).
+
 ## Authentication
 
 The API defaults to `AUTH_MODE=session`. Development uses the same email/password

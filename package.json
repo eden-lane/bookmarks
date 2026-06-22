@@ -7,8 +7,9 @@
     "packages/*"
   ],
   "scripts": {
+    "build": "bun run --filter @shelf/web build",
     "db:generate": "drizzle-kit generate",
-    "db:migrate": "node scripts/migrate.mjs",
+    "db:migrate": "bun scripts/migrate.mjs",
     "db:push": "drizzle-kit push",
     "db:studio": "drizzle-kit studio",
     "dev:api": "cd apps/server && bun run dev",

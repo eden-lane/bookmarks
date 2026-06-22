@@ -11,6 +11,7 @@ export interface ServerConfig {
   registrationMode: RegistrationMode;
   allowedOrigins: string[];
   sessionCookieSecure: boolean;
+  staticDir: string | null;
 }
 
 const numberFromEnv = (name: string, fallback: number): number => {
@@ -59,7 +60,17 @@ const allowedOriginsFromEnv = (port: number) => {
   const value = Bun.env.APP_ORIGINS ?? Bun.env.APP_ORIGIN;
 
   if (!value) {
-    return [`http://localhost:5173`, `http://127.0.0.1:5173`, `http://localhost:${port}`];
+    const origins = [
+      `http://localhost:5173`,
+      `http://127.0.0.1:5173`,
+      `http://localhost:${port}`
+    ];
+
+    if (Bun.env.RAILWAY_PUBLIC_DOMAIN) {
+      origins.push(`https://${Bun.env.RAILWAY_PUBLIC_DOMAIN}`);
+    }
+
+    return origins;
   }
 
   return value
@@ -86,6 +97,18 @@ const sessionCookieSecureFromEnv = () => {
   throw new Error("SESSION_COOKIE_SECURE must be true or false");
 };
 
+const staticDirFromEnv = () => {
+  if (Bun.env.SHELF_STATIC_DIR) {
+    return Bun.env.SHELF_STATIC_DIR;
+  }
+
+  if (Bun.env.NODE_ENV === "production") {
+    return "apps/web/dist";
+  }
+
+  return null;
+};
+
 export const getConfig = (): ServerConfig => {
   const port = numberFromEnv("PORT", 3000);
   const authMode = authModeFromEnv();
@@ -99,6 +122,7 @@ export const getConfig = (): ServerConfig => {
     authMode,
     registrationMode: registrationModeFromEnv(),
     allowedOrigins: allowedOriginsFromEnv(port),
-    sessionCookieSecure: sessionCookieSecureFromEnv()
+    sessionCookieSecure: sessionCookieSecureFromEnv(),
+    staticDir: staticDirFromEnv()
   };
 };

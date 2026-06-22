@@ -17,7 +17,8 @@ const app = createApp({
   authMode: config.authMode,
   registrationMode: config.registrationMode,
   allowedOrigins: config.allowedOrigins,
-  sessionCookieSecure: config.sessionCookieSecure
+  sessionCookieSecure: config.sessionCookieSecure,
+  staticDir: config.staticDir
 });
 const savedItemEnrichmentWorker = new SavedItemEnrichmentWorker({
   db: clients.db,
