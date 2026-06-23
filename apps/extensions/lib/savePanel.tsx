@@ -51,11 +51,13 @@ export interface ActivePage {
 }
 
 type MessageTone = "error" | "neutral" | "success";
-type PanelScreen = "save" | "libraries" | "folders";
 type FolderNode = FolderItem & { children: FolderNode[] };
+type ExistingTagOption = { kind: "existing"; tag: TagItem };
+type NewTagOption = { kind: "new"; name: string };
+type CreateTagOption = { kind: "create"; name: string };
+type TagOption = ExistingTagOption | NewTagOption | CreateTagOption;
 
 export const SavePanel = (props: { initialPage: ActivePage; onClose: () => void }) => {
-  const [screen, setScreen] = createSignal<PanelScreen>("save");
   const [page, setPage] = createSignal(props.initialPage);
   const [currentUser, setCurrentUser] = createSignal<CurrentUserResponse | null>(null);
   const [folders, setFolders] = createSignal<FolderItem[]>([]);
@@ -63,8 +65,10 @@ export const SavePanel = (props: { initialPage: ActivePage; onClose: () => void 
   const [savedLocations, setSavedLocations] = createSignal<SavedItemLocation[]>([]);
   const [selectedFolderId, setSelectedFolderId] = createSignal("");
   const [selectedInboxLibraryId, setSelectedInboxLibraryId] = createSignal<string | null>(null);
-  const [selectedTagIds, setSelectedTagIds] = createSignal<string[]>([]);
-  const [pickerLibraryId, setPickerLibraryId] = createSignal<string | null>(null);
+  const [selectedTagOptions, setSelectedTagOptions] = createSignal<Array<ExistingTagOption | NewTagOption>>([]);
+  const [tagInputValue, setTagInputValue] = createSignal("");
+  const [isFolderPickerOpen, setIsFolderPickerOpen] = createSignal(false);
+  const [isTagPickerOpen, setIsTagPickerOpen] = createSignal(false);
   const [expandedFolderIds, setExpandedFolderIds] = createSignal<ReadonlySet<string>>(new Set());
   const [isBusy, setIsBusy] = createSignal(false);
   const [message, setMessage] = createSignal("");
@@ -102,21 +106,37 @@ export const SavePanel = (props: { initialPage: ActivePage; onClose: () => void 
     return libraryName && currentUser()?.libraries.length !== 1 ? `${libraryName} / Inbox` : "Inbox";
   });
   const folderTree = createMemo(() => buildFolderTree(folders()));
-  const isFolderSelectionDisabled = createMemo(() => !currentUser() || folders().length === 0);
+  const isFolderSelectionDisabled = createMemo(() => !currentUser());
   const saveDisabled = createMemo(() => isBusy() || !currentUser());
   const previewHost = createMemo(() => new URL(page().url).hostname.replace(/^www\./, ""));
-  const selectedPickerLibrary = createMemo(
-    () => currentUser()?.libraries.find((library) => library.id === pickerLibraryId()) ?? null
-  );
-  const pickerRoots = createMemo(() => {
-    const libraryId = pickerLibraryId();
-
-    return libraryId ? folderTree().filter((folder) => folder.libraryId === libraryId) : [];
-  });
   const visibleTags = createMemo(() => {
     const libraryId = selectedLibraryId();
 
     return libraryId ? tags().filter((tag) => tag.libraryId === libraryId) : [];
+  });
+  const selectedExistingTagIds = createMemo(() =>
+    selectedTagOptions().flatMap((option) => (option.kind === "existing" ? [option.tag.id] : []))
+  );
+  const selectedNewTagNames = createMemo(() =>
+    selectedTagOptions().flatMap((option) => (option.kind === "new" ? [option.name] : []))
+  );
+  const normalizedTagInput = createMemo(() => normalizeTagName(tagInputValue()));
+  const tagOptions = createMemo(() => {
+    const input = normalizedTagInput();
+    const searchNeedle = input.toLowerCase();
+    const selectedKeys = new Set(selectedTagOptions().map(getTagOptionValue));
+    const matchingExistingTag = visibleTags().find(
+      (tag) => normalizeTagName(tag.name).toLowerCase() === searchNeedle
+    );
+    const options: TagOption[] = visibleTags()
+      .filter((tag) => !searchNeedle || normalizeTagName(tag.name).toLowerCase().includes(searchNeedle))
+      .map((tag) => ({ kind: "existing", tag }));
+
+    if (input && !matchingExistingTag && !selectedKeys.has(`new:${input.toLowerCase()}`)) {
+      options.push({ kind: "create", name: input });
+    }
+
+    return options;
   });
   const savedLocationLabels = createMemo(() =>
     savedLocations()
@@ -141,12 +161,15 @@ export const SavePanel = (props: { initialPage: ActivePage; onClose: () => void 
 
   createEffect(() => {
     if (!selectedLibraryId()) {
-      setSelectedTagIds([]);
+      setSelectedTagOptions([]);
       return;
     }
 
-    setSelectedTagIds((current) =>
-      current.filter((tagId) => visibleTags().some((tag) => tag.id === tagId))
+    setSelectedTagOptions((current) =>
+      current.filter(
+        (option) =>
+          option.kind === "new" || visibleTags().some((tag) => tag.id === option.tag.id)
+      )
     );
   });
 
@@ -172,8 +195,10 @@ export const SavePanel = (props: { initialPage: ActivePage; onClose: () => void 
           userResponse.libraries[0]?.id ??
           null
       );
-      setSelectedTagIds([]);
-      setPickerLibraryId(userResponse.libraries[0]?.id ?? null);
+      setSelectedTagOptions([]);
+      setTagInputValue("");
+      setIsFolderPickerOpen(false);
+      setIsTagPickerOpen(false);
       setExpandedFolderIds(new Set<string>());
       writeMessage("", "neutral");
       setStatus("Ready");
@@ -184,10 +209,11 @@ export const SavePanel = (props: { initialPage: ActivePage; onClose: () => void 
       setSavedLocations([]);
       setSelectedFolderId("");
       setSelectedInboxLibraryId(null);
-      setSelectedTagIds([]);
-      setPickerLibraryId(null);
+      setSelectedTagOptions([]);
+      setTagInputValue("");
+      setIsFolderPickerOpen(false);
+      setIsTagPickerOpen(false);
       setExpandedFolderIds(new Set<string>());
-      setScreen("save");
       writeMessage(errorMessage(error), "error");
       setStatus("Offline");
     } finally {
@@ -214,11 +240,42 @@ export const SavePanel = (props: { initialPage: ActivePage; onClose: () => void 
     writeMessage("Saving page", "neutral");
 
     try {
+      const libraryId = selectedLibraryId();
+      const createdTags =
+        selectedNewTagNames().length > 0 && libraryId
+          ? await Promise.all(
+              selectedNewTagNames().map((name) =>
+                rpcCall<TagItem>("tags/create", {
+                  libraryId,
+                  name
+                })
+              )
+            )
+          : [];
+      const tagIds = [...selectedExistingTagIds(), ...createdTags.map((tag) => tag.id)];
+
+      if (createdTags.length > 0) {
+        setTags((current) => [...current, ...createdTags]);
+        setSelectedTagOptions((current) =>
+          current.map((option) => {
+            if (option.kind === "existing") {
+              return option;
+            }
+
+            const createdTag = createdTags.find(
+              (tag) => normalizeTagName(tag.name).toLowerCase() === option.name.toLowerCase()
+            );
+
+            return createdTag ? { kind: "existing", tag: createdTag } : option;
+          })
+        );
+      }
+
       await rpcCall("savedItems/create", {
         description: page().description || undefined,
         folderId: selectedFolderId() || undefined,
         libraryId: selectedFolderId() ? undefined : selectedLibraryId() ?? undefined,
-        tagIds: selectedTagIds(),
+        tagIds,
         url: page().url
       });
 
@@ -233,10 +290,53 @@ export const SavePanel = (props: { initialPage: ActivePage; onClose: () => void 
     }
   };
 
-  const toggleTag = (tagId: string, isSelected: boolean) => {
-    setSelectedTagIds((current) =>
-      isSelected ? [...current, tagId] : current.filter((selectedTagId) => selectedTagId !== tagId)
+  const toggleTagOption = (option: TagOption) => {
+    if (option.kind === "create") {
+      setSelectedTagOptions((current) => mergeTagOptions(current, { kind: "new", name: option.name }));
+      setTagInputValue("");
+      setIsFolderPickerOpen(false);
+      setIsTagPickerOpen(true);
+      return;
+    }
+
+    const value = getTagOptionValue(option);
+
+    setSelectedTagOptions((current) =>
+      current.some((selectedOption) => getTagOptionValue(selectedOption) === value)
+        ? current.filter((selectedOption) => getTagOptionValue(selectedOption) !== value)
+        : mergeTagOptions(current, option)
     );
+    setTagInputValue("");
+    setIsFolderPickerOpen(false);
+    setIsTagPickerOpen(true);
+  };
+
+  const removeTagOption = (option: ExistingTagOption | NewTagOption) => {
+    const value = getTagOptionValue(option);
+
+    setSelectedTagOptions((current) =>
+      current.filter((selectedOption) => getTagOptionValue(selectedOption) !== value)
+    );
+  };
+
+  const handleTagInputKeyDown = (event: KeyboardEvent) => {
+    if (event.key === "Enter") {
+      event.preventDefault();
+      const option = tagOptions()[0];
+
+      if (option) {
+        toggleTagOption(option);
+      }
+    }
+
+    if (event.key === "Backspace" && !tagInputValue()) {
+      setSelectedTagOptions((current) => current.slice(0, -1));
+    }
+
+    if (event.key === "Escape") {
+      event.stopPropagation();
+      setIsTagPickerOpen(false);
+    }
   };
 
   const openFolderPicker = () => {
@@ -245,28 +345,28 @@ export const SavePanel = (props: { initialPage: ActivePage; onClose: () => void 
     }
 
     const folder = selectedFolder();
-    const firstLibrary = currentUser()?.libraries[0] ?? null;
 
-    setPickerLibraryId(folder?.libraryId ?? selectedLibraryId() ?? firstLibrary?.id ?? null);
     setExpandedFolderIds(expandedAncestorIds(folders(), folder?.id ?? selectedFolderId()));
-    setScreen("libraries");
-  };
-
-  const chooseLibrary = (libraryId: string) => {
-    const folder = selectedFolder();
-
-    setPickerLibraryId(libraryId);
-    setExpandedFolderIds(
-      folder?.libraryId === libraryId ? expandedAncestorIds(folders(), folder.id) : new Set<string>()
-    );
-    setScreen("folders");
+    setIsTagPickerOpen(false);
+    setIsFolderPickerOpen((current) => !current);
   };
 
   const chooseFolder = (folder: FolderItem) => {
     setSelectedFolderId(folder.id);
     setSelectedInboxLibraryId(folder.libraryId);
-    setSelectedTagIds([]);
-    setScreen("save");
+    setSelectedTagOptions([]);
+    setTagInputValue("");
+    setIsFolderPickerOpen(false);
+    setIsTagPickerOpen(false);
+  };
+
+  const chooseInbox = (libraryId: string | null) => {
+    setSelectedFolderId("");
+    setSelectedInboxLibraryId(libraryId);
+    setSelectedTagOptions([]);
+    setTagInputValue("");
+    setIsFolderPickerOpen(false);
+    setIsTagPickerOpen(false);
   };
 
   const drillIntoFolder = (folder: FolderItem) => {
@@ -289,9 +389,24 @@ export const SavePanel = (props: { initialPage: ActivePage; onClose: () => void 
   };
 
   return (
-    <div class="shelf-overlay-frame" onKeyDown={(event) => event.key === "Escape" && props.onClose()}>
-      <Show when={screen() === "save"} fallback={renderFolderPicker()}>
-        <section class="shelf-panel" aria-label="Save page to Shelf">
+    <div
+      class="shelf-overlay-frame"
+      onKeyDown={(event) => {
+        if (event.key !== "Escape") {
+          return;
+        }
+
+        if (isFolderPickerOpen() || isTagPickerOpen()) {
+          event.stopPropagation();
+          setIsFolderPickerOpen(false);
+          setIsTagPickerOpen(false);
+          return;
+        }
+
+        props.onClose();
+      }}
+    >
+      <section class="shelf-panel" aria-label="Save page to Shelf">
           <header class="shelf-panel-header">
             <div class="shelf-brand">
               <span class="shelf-brand-mark">S</span>
@@ -361,29 +476,36 @@ export const SavePanel = (props: { initialPage: ActivePage; onClose: () => void 
               void saveSavedItem();
             }}
           >
-            <label class="shelf-field">
+            <div class="shelf-field">
               <span>Folder</span>
-              <button
-                class="shelf-folder-trigger"
-                type="button"
-                disabled={isFolderSelectionDisabled()}
-                onClick={openFolderPicker}
-              >
-                <span class="shelf-folder-trigger-content">
-                  <Show when={selectedFolder()}>
-                    {(folder) => (
-                      <TablerIcon
-                        color={folder().iconColor ?? DEFAULT_FOLDER_ICON_COLOR}
-                        name={folder().iconName}
-                        size={20}
-                      />
-                    )}
-                  </Show>
-                  <span>{selectedFolderLabel()}</span>
-                </span>
-                <TablerIcon name="IconChevronRight" size={16} />
-              </button>
-            </label>
+              <div class="shelf-folder-combobox">
+                <button
+                  class="shelf-folder-trigger"
+                  type="button"
+                  aria-expanded={isFolderPickerOpen()}
+                  disabled={isFolderSelectionDisabled()}
+                  onClick={openFolderPicker}
+                >
+                  <span class="shelf-folder-trigger-content">
+                    <Show
+                      when={selectedFolder()}
+                      fallback={<TablerIcon color={DEFAULT_FOLDER_ICON_COLOR} name="IconInbox" size={20} />}
+                    >
+                      {(folder) => (
+                        <TablerIcon
+                          color={folder().iconColor ?? DEFAULT_FOLDER_ICON_COLOR}
+                          name={folder().iconName}
+                          size={20}
+                        />
+                      )}
+                    </Show>
+                    <span>{selectedFolderLabel()}</span>
+                  </span>
+                  <TablerIcon name={isFolderPickerOpen() ? "IconChevronUp" : "IconChevronDown"} size={16} />
+                </button>
+                <Show when={isFolderPickerOpen()}>{renderFolderDropdown()}</Show>
+              </div>
+            </div>
 
             <section class="shelf-field">
               <div class="shelf-field-row">
@@ -399,22 +521,93 @@ export const SavePanel = (props: { initialPage: ActivePage; onClose: () => void 
                   <TablerIcon name="IconRefresh" size={16} />
                 </button>
               </div>
-              <div class="shelf-tag-list" aria-live="polite">
-                <Show when={visibleTags().length > 0} fallback={<p class="shelf-empty-state">No tags in this workspace</p>}>
-                  <For each={visibleTags()}>
-                    {(tag) => (
-                      <label class="shelf-tag-option" style={{ "--tag-color": tag.color ?? "#64748b" }}>
-                        <input
-                          type="checkbox"
-                          name="tagIds"
-                          value={tag.id}
-                          checked={selectedTagIds().includes(tag.id)}
-                          onChange={(event) => toggleTag(tag.id, event.currentTarget.checked)}
-                        />
-                        <span>{tag.name}</span>
-                      </label>
+              <div class="shelf-tag-combobox">
+                <div
+                  class="shelf-tag-input-wrap"
+                  onClick={() => {
+                    setIsFolderPickerOpen(false);
+                    setIsTagPickerOpen(true);
+                  }}
+                >
+                  <For each={selectedTagOptions()}>
+                    {(option) => (
+                      <button
+                        class="shelf-tag-token"
+                        style={{ "--tag-color": option.kind === "existing" ? (option.tag.color ?? "#64748b") : "#64748b" }}
+                        type="button"
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          removeTagOption(option);
+                        }}
+                      >
+                        <span>{getTagOptionLabel(option)}</span>
+                        <TablerIcon name="IconX" size={13} />
+                      </button>
                     )}
                   </For>
+                  <input
+                    aria-label="Search or create tags"
+                    autocomplete="off"
+                    data-1p-ignore="true"
+                    data-op-ignore="true"
+                    placeholder={selectedTagOptions().length > 0 ? "" : "Search or create tags"}
+                    value={tagInputValue()}
+                    onFocus={() => {
+                      setIsFolderPickerOpen(false);
+                      setIsTagPickerOpen(true);
+                    }}
+                    onInput={(event) => {
+                      setTagInputValue(event.currentTarget.value);
+                      setIsTagPickerOpen(true);
+                    }}
+                    onKeyDown={handleTagInputKeyDown}
+                  />
+                </div>
+                <Show when={isTagPickerOpen()}>
+                  <div class="shelf-tag-menu" role="listbox">
+                    <Show
+                      when={tagOptions().length > 0}
+                      fallback={<p class="shelf-empty-state">Type a tag name to create it.</p>}
+                    >
+                      <For each={tagOptions()}>
+                        {(option) => {
+                          const isSelected = () =>
+                            option.kind !== "create" &&
+                            selectedTagOptions().some(
+                              (selectedOption) => getTagOptionValue(selectedOption) === getTagOptionValue(option)
+                            );
+
+                          return (
+                            <button
+                              class="shelf-tag-menu-option"
+                              type="button"
+                              role="option"
+                              aria-selected={isSelected()}
+                              onClick={() => toggleTagOption(option)}
+                            >
+                              <span class="shelf-tag-menu-check">
+                                <Show when={isSelected()}>
+                                  <TablerIcon name="IconCheck" size={14} />
+                                </Show>
+                              </span>
+                              <span
+                                class="shelf-tag-dot"
+                                style={{
+                                  "--tag-color":
+                                    option.kind === "existing"
+                                      ? (option.tag.color ?? "#64748b")
+                                      : "#64748b"
+                                }}
+                              />
+                              <span>
+                                {option.kind === "create" ? `Create "${option.name}"` : getTagOptionLabel(option)}
+                              </span>
+                            </button>
+                          );
+                        }}
+                      </For>
+                    </Show>
+                  </div>
                 </Show>
               </div>
             </section>
@@ -428,89 +621,26 @@ export const SavePanel = (props: { initialPage: ActivePage; onClose: () => void 
             </button>
           </form>
         </section>
-      </Show>
     </div>
   );
 
-  function renderFolderPicker() {
+  function renderFolderDropdown() {
     return (
-      <Show when={screen() === "libraries"} fallback={renderFolderTreePicker()}>
-        <section class="shelf-panel shelf-picker-panel" aria-label="Choose workspace">
-          <header class="shelf-panel-header">
-            <div>
-              <p class="shelf-eyebrow">Folder</p>
-              <h1>Choose workspace</h1>
-            </div>
-            <button class="shelf-text-button" type="button" onClick={() => setScreen("save")}>
-              Done
-            </button>
-          </header>
-
-          <div class="shelf-folder-list" aria-live="polite">
-            <For each={currentUser()?.libraries ?? []}>
-              {(library) => {
-                const rootCount = folderTree().filter((folder) => folder.libraryId === library.id).length;
-
-                return (
-                  <button class="shelf-library-row" type="button" onClick={() => chooseLibrary(library.id)}>
-                    <span class="shelf-folder-row-label">
-                      <TablerIcon name="IconDatabase" size={21} />
-                      <span>
-                        <strong>{library.name}</strong>
-                        <small>{rootCount} folders</small>
-                      </span>
-                    </span>
-                    <TablerIcon name="IconChevronRight" size={16} />
-                  </button>
-                );
-              }}
-            </For>
-          </div>
-        </section>
-      </Show>
-    );
-  }
-
-  function renderFolderTreePicker() {
-    return (
-      <section class="shelf-panel shelf-picker-panel" aria-label="Choose folder">
-        <header class="shelf-panel-header">
-          <div>
-            <p class="shelf-eyebrow">{selectedPickerLibrary()?.name ?? "Workspace"}</p>
-            <h1>Choose folder</h1>
-          </div>
-          <button class="shelf-text-button" type="button" onClick={() => setScreen("save")}>
-            Done
-          </button>
-        </header>
-
-        <div class="shelf-picker-nav">
-          <button class="shelf-text-button" type="button" onClick={() => setScreen("libraries")}>
-            Back
-          </button>
-          <button
-            class="shelf-text-button"
-            type="button"
-            onClick={() => {
-              setSelectedFolderId("");
-              setSelectedInboxLibraryId(pickerLibraryId());
-              setSelectedTagIds([]);
-              setScreen("save");
-            }}
-          >
-            Use Inbox
-          </button>
-        </div>
-
-        <div class="shelf-folder-list" aria-live="polite">
-          <Show
-            when={pickerRoots().length > 0}
-            fallback={<p class="shelf-empty-state">No folders in this workspace</p>}
-          >
-            <For each={pickerRoots()}>{(folder) => renderFolderNode(folder, 0)}</For>
-          </Show>
-        </div>
-      </section>
+      <div class="shelf-folder-list" aria-live="polite">
+        <For each={currentUser()?.libraries ?? []}>
+          {(library) => (
+            <section class="shelf-folder-group">
+              <Show when={(currentUser()?.libraries.length ?? 0) > 1}>
+                <p class="shelf-folder-group-label">{library.name}</p>
+              </Show>
+              {renderInboxFolderRow(library.id)}
+              <For each={folderTree().filter((folder) => folder.libraryId === library.id)}>
+                {(folder) => renderFolderNode(folder, 0)}
+              </For>
+            </section>
+          )}
+        </For>
+      </div>
     );
   }
 
@@ -549,6 +679,21 @@ export const SavePanel = (props: { initialPage: ActivePage; onClose: () => void 
           <For each={folder.children}>{(child) => renderFolderNode(child, level + 1)}</For>
         </Show>
       </>
+    );
+  }
+
+  function renderInboxFolderRow(libraryId: string) {
+    const isSelectedInbox = () => !selectedFolderId() && selectedInboxLibraryId() === libraryId;
+
+    return (
+      <div class={["shelf-folder-tree-row", isSelectedInbox() ? "is-selected" : ""].join(" ")}>
+        <span class="shelf-disclosure-placeholder" />
+        <button class="shelf-folder-select-button" type="button" onClick={() => chooseInbox(libraryId)}>
+          <TablerIcon color={DEFAULT_FOLDER_ICON_COLOR} name="IconInbox" size={20} />
+          <span>Inbox</span>
+        </button>
+        <span class="shelf-folder-count" />
+      </div>
     );
   }
 };
@@ -612,6 +757,29 @@ const folderPath = (folder: FolderItem, allFolders: FolderItem[]) => {
   }
 
   return path.join(" / ");
+};
+
+const normalizeTagName = (name: string) => name.trim().replace(/\s+/g, " ");
+
+const getTagOptionLabel = (option: ExistingTagOption | NewTagOption | CreateTagOption) =>
+  option.kind === "existing" ? option.tag.name : option.name;
+
+const getTagOptionValue = (option: ExistingTagOption | NewTagOption | CreateTagOption) =>
+  option.kind === "existing" ? `existing:${option.tag.id}` : `${option.kind}:${option.name.toLowerCase()}`;
+
+const mergeTagOptions = (
+  options: Array<ExistingTagOption | NewTagOption>,
+  nextOption: ExistingTagOption | NewTagOption
+) => {
+  const next = [...options];
+  const values = new Set(next.map(getTagOptionValue));
+  const value = getTagOptionValue(nextOption);
+
+  if (!values.has(value)) {
+    next.push(nextOption);
+  }
+
+  return next;
 };
 
 const errorMessage = (error: unknown) =>
