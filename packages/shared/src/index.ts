@@ -137,6 +137,10 @@ export interface SavedItemPreviewInput {
 
 export interface SavedItemPreviewResponse {
   description: string | null;
+  faviconUrl: string | null;
+  imageUrl: string | null;
+  siteName: string | null;
+  title: string | null;
 }
 
 export interface DeleteSavedItemInput {

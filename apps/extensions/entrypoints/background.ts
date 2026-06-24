@@ -61,7 +61,7 @@ export default defineBackground(() => {
       return;
     }
 
-    void togglePanelInTab(tab.id, tab.windowId);
+    void togglePanelInTab(tab.id);
   });
 
   browser.runtime.onMessage.addListener((message: RuntimeMessage) => {
@@ -496,12 +496,8 @@ const base64Url = (bytes: Uint8Array) =>
 const errorMessage = (error: unknown) =>
   error instanceof Error ? error.message : "Shelf request failed.";
 
-const togglePanelInTab = async (tabId: number, windowId: number) => {
-  const previewImageUrl = await browser.tabs
-    .captureVisibleTab(windowId, { format: "jpeg", quality: 45 })
-    .catch(() => null);
+const togglePanelInTab = async (tabId: number) => {
   const message = {
-    previewImageUrl,
     type: "shelf:toggle-save-panel"
   } as const;
 
@@ -515,7 +511,7 @@ const togglePanelInTab = async (tabId: number, windowId: number) => {
 
 const sendTogglePanelMessage = async (
   tabId: number,
-  message: { previewImageUrl: string | null; type: "shelf:toggle-save-panel" }
+  message: { type: "shelf:toggle-save-panel" }
 ) => {
   try {
     await browser.tabs.sendMessage(tabId, message);

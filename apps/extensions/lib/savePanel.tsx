@@ -1,4 +1,4 @@
-import { createEffect, createMemo, createSignal, For, onMount, Show } from "solid-js";
+import { createEffect, createMemo, createSignal, For, onCleanup, onMount, Show } from "solid-js";
 import { browser } from "wxt/browser";
 import { DEFAULT_FOLDER_ICON_COLOR, TablerIcon } from "./folderIcons";
 import { rpcCall } from "./rpc";
@@ -40,6 +40,10 @@ interface SavedItemLocation {
 
 interface SavedItemPreviewResponse {
   description: string | null;
+  faviconUrl: string | null;
+  imageUrl: string | null;
+  siteName: string | null;
+  title: string | null;
 }
 
 export interface ActivePage {
@@ -145,8 +149,23 @@ export const SavePanel = (props: { initialPage: ActivePage; onClose: () => void 
   );
 
   onMount(() => {
+    const handleDocumentPointerDown = (event: PointerEvent) => {
+      const path = event.composedPath();
+
+      if (isFolderPickerOpen() && !path.some((target) => isElementWithClass(target, "shelf-folder-combobox"))) {
+        setIsFolderPickerOpen(false);
+      }
+
+      if (isTagPickerOpen() && !path.some((target) => isElementWithClass(target, "shelf-tag-combobox"))) {
+        setIsTagPickerOpen(false);
+      }
+    };
+
+    document.addEventListener("pointerdown", handleDocumentPointerDown, true);
+    onCleanup(() => document.removeEventListener("pointerdown", handleDocumentPointerDown, true));
+
     void loadAppData();
-    void loadPreviewDescription();
+    void loadPagePreview();
   });
 
   createEffect(() => {
@@ -211,8 +230,8 @@ export const SavePanel = (props: { initialPage: ActivePage; onClose: () => void 
     }
   };
 
-  const loadPreviewDescription = async () => {
-    if (page().description) {
+  const loadPagePreview = async () => {
+    if (page().description && page().imageUrl) {
       return;
     }
 
@@ -220,8 +239,14 @@ export const SavePanel = (props: { initialPage: ActivePage; onClose: () => void 
       url: page().url
     }).catch(() => null);
 
-    if (preview?.description) {
-      setPage((current) => ({ ...current, description: preview.description ?? "" }));
+    if (preview) {
+      setPage((current) => ({
+        ...current,
+        description: current.description || preview.description || "",
+        faviconUrl: current.faviconUrl || preview.faviconUrl,
+        imageUrl: current.imageUrl || preview.imageUrl,
+        title: current.title || preview.title || preview.siteName || new URL(current.url).hostname
+      }));
     }
   };
 
@@ -388,23 +413,7 @@ export const SavePanel = (props: { initialPage: ActivePage; onClose: () => void 
 
   return (
     <div
-      class="shelf-panel-layer"
-      onPointerDown={(event) => {
-        if (event.target === event.currentTarget) {
-          props.onClose();
-          return;
-        }
-
-        const path = event.composedPath();
-
-        if (isFolderPickerOpen() && !path.some((target) => isElementWithClass(target, "shelf-folder-combobox"))) {
-          setIsFolderPickerOpen(false);
-        }
-
-        if (isTagPickerOpen() && !path.some((target) => isElementWithClass(target, "shelf-tag-combobox"))) {
-          setIsTagPickerOpen(false);
-        }
-      }}
+      class="shelf-overlay-frame"
       onKeyDown={(event) => {
         if (event.key !== "Escape") {
           return;
@@ -420,8 +429,7 @@ export const SavePanel = (props: { initialPage: ActivePage; onClose: () => void 
         props.onClose();
       }}
     >
-      <div class="shelf-overlay-frame">
-        <section class="shelf-panel" aria-label="Save page to Shelf">
+      <section class="shelf-panel" aria-label="Save page to Shelf">
           <header class="shelf-panel-header">
             <div class="shelf-brand">
               <span class="shelf-brand-mark">S</span>
@@ -623,8 +631,7 @@ export const SavePanel = (props: { initialPage: ActivePage; onClose: () => void 
               Save to Shelf
             </button>
           </form>
-        </section>
-      </div>
+      </section>
     </div>
   );
 

@@ -18,13 +18,13 @@ export default defineContentScript({
 
     browser.runtime.onMessage.addListener((message) => {
       if (isToggleMessage(message)) {
-        toggleSavePanel(message.previewImageUrl);
+        toggleSavePanel();
       }
     });
   }
 });
 
-const toggleSavePanel = (previewImageUrl: string | null) => {
+const toggleSavePanel = () => {
   if (host) {
     closeSavePanel();
     return;
@@ -34,7 +34,7 @@ const toggleSavePanel = (previewImageUrl: string | null) => {
   nextHost.style.position = "fixed";
   nextHost.style.inset = "0";
   nextHost.style.zIndex = "2147483647";
-  nextHost.style.pointerEvents = "auto";
+  nextHost.style.pointerEvents = "none";
 
   const shadow = nextHost.attachShadow({ mode: "open" });
   const style = document.createElement("style");
@@ -45,7 +45,7 @@ const toggleSavePanel = (previewImageUrl: string | null) => {
   document.documentElement.append(nextHost);
   host = nextHost;
   disposePanel = render(
-    () => <SavePanel initialPage={readActivePage(previewImageUrl)} onClose={closeSavePanel} />,
+    () => <SavePanel initialPage={readActivePage()} onClose={closeSavePanel} />,
     root
   );
 };
@@ -92,7 +92,7 @@ const finishOAuthCallbackFromPage = () => {
 
 const isToggleMessage = (
   message: unknown
-): message is { previewImageUrl: string | null; type: "shelf:toggle-save-panel" } =>
+): message is { type: "shelf:toggle-save-panel" } =>
   typeof message === "object" &&
   message !== null &&
   "type" in message &&
@@ -103,7 +103,7 @@ const isRuntimeResponse = (
 ): value is { ok: true; value: unknown } | { ok: false; error: string } =>
   typeof value === "object" && value !== null && "ok" in value;
 
-const readActivePage = (previewImageUrl: string | null): ActivePage => {
+const readActivePage = (): ActivePage => {
   const title = readMeta(["meta[property='og:title']", "meta[name='twitter:title']"]) || document.title;
   const description =
     readMeta([
@@ -123,7 +123,7 @@ const readActivePage = (previewImageUrl: string | null): ActivePage => {
   return {
     description: description.trim(),
     faviconUrl,
-    imageUrl: previewImageUrl ?? imageUrl,
+    imageUrl,
     title: title.trim() || new URL(location.href).hostname,
     url: location.href
   };

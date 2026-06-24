@@ -74,11 +74,15 @@ export const createRpcRouter = (options: RpcRouterOptions) => ({
         const metadata = await fetchLinkPreviewMetadata(previewInput.url);
 
         return {
-          description: metadata.description
+          description: metadata.description,
+          faviconUrl: resolvePreviewAssetUrl(metadata.faviconCandidates[0], previewInput.url),
+          imageUrl: resolvePreviewAssetUrl(metadata.imageUrl, previewInput.url),
+          siteName: metadata.siteName,
+          title: metadata.title
         };
       } catch {
         throw new ORPCError("BAD_REQUEST", {
-          message: "Unable to fetch page description"
+          message: "Unable to fetch page preview"
         });
       }
     }),
@@ -589,6 +593,20 @@ const parseSavedItemPreviewInput = (input: unknown): SavedItemPreviewInput | nul
   const url = parseHttpUrl(input.url);
 
   return url ? { url } : null;
+};
+
+const resolvePreviewAssetUrl = (value: string | null | undefined, pageUrl: string): string | null => {
+  if (!value) {
+    return null;
+  }
+
+  try {
+    const url = new URL(value, pageUrl);
+
+    return url.protocol === "http:" || url.protocol === "https:" ? url.toString() : null;
+  } catch {
+    return null;
+  }
 };
 
 const normalizeOptionalText = (value: unknown): string | null => {
