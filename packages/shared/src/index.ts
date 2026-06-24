@@ -127,8 +127,11 @@ export interface CreateSavedItemInput {
   url: string;
   description?: string | null;
   folderId?: string;
+  imageUrl?: string | null;
   libraryId?: string;
+  siteName?: string | null;
   tagIds?: string[];
+  title?: string | null;
 }
 
 export interface SavedItemPreviewInput {

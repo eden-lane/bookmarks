@@ -161,8 +161,11 @@ export const createRpcRouter = (options: RpcRouterOptions) => ({
         createdByUserId: options.currentUser.user.id,
         description: savedItem.description ?? null,
         folderId: targetFolderId,
+        imageUrl: savedItem.imageUrl ?? null,
         libraryId: targetLibraryId,
+        siteName: savedItem.siteName ?? null,
         tagIds: selectedTagIds,
+        title: savedItem.title ?? null,
         url: savedItem.url
       });
 
@@ -579,8 +582,14 @@ const parseCreateSavedItemInput = (input: unknown): CreateSavedItemInput | null 
   return {
     description: normalizeOptionalText(input.description),
     folderId: typeof input.folderId === "string" && input.folderId ? input.folderId : undefined,
+    imageUrl: resolvePreviewAssetUrl(
+      typeof input.imageUrl === "string" ? input.imageUrl : null,
+      url
+    ),
     libraryId: typeof input.libraryId === "string" && input.libraryId ? input.libraryId : undefined,
+    siteName: normalizeOptionalText(input.siteName),
     tagIds: parseSelectedTagIds(input.tagIds),
+    title: normalizeOptionalText(input.title),
     url
   };
 };

@@ -41,7 +41,11 @@ export const enrichSavedItem = async (db: Database, savedItemId: string): Promis
   const [savedItem] = await db
     .select({
       description: schema.savedItems.description,
+      faviconId: schema.savedItems.faviconId,
       id: schema.savedItems.id,
+      imageUrl: schema.savedItems.imageUrl,
+      siteName: schema.savedItems.siteName,
+      title: schema.savedItems.title,
       url: schema.savedItems.url
     })
     .from(schema.savedItems)
@@ -63,12 +67,12 @@ export const enrichSavedItem = async (db: Database, savedItemId: string): Promis
       .update(schema.savedItems)
       .set({
         description: savedItem.description ?? metadata.description,
-        faviconId: favicon?.id ?? null,
-        imageUrl: metadata.imageUrl,
+        faviconId: savedItem.faviconId ?? favicon?.id ?? null,
+        imageUrl: savedItem.imageUrl ?? metadata.imageUrl,
         metadataFetchedAt: new Date(),
         metadataStatus: "fetched",
-        siteName: metadata.siteName,
-        title: metadata.title,
+        siteName: savedItem.siteName ?? metadata.siteName,
+        title: savedItem.title ?? metadata.title,
         updatedAt: sql`now()`
       })
       .where(eq(schema.savedItems.id, savedItem.id));

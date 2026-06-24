@@ -58,6 +58,7 @@ import { SavedItemsWorkspace } from "../features/savedItems/SavedItemsWorkspace"
 import {
   savedItemQueryKey,
   savedItemQueryKeysForFolder,
+  fallbackFaviconUrl,
   hostFromUrl,
   insertSavedItemIntoPages,
   removeSavedItemsFromPages
@@ -1596,6 +1597,7 @@ const compareTags = (left: TagItem, right: TagItem) =>
 const SavedItemDragPreview = ({ item }: { item: SavedItem }) => {
   const host = hostFromUrl(item.url);
   const title = item.title || host || item.url;
+  const faviconSrc = item.faviconUrl ? apiAssetUrl(item.faviconUrl) : fallbackFaviconUrl(item.url);
 
   return (
     <article className="w-[min(760px,calc(100vw-24px))] overflow-hidden rounded-lg border border-[#3b8df5] bg-white p-4 opacity-95 shadow-[0_24px_80px_rgb(22_28_43_/_0.24)]">
@@ -1619,10 +1621,10 @@ const SavedItemDragPreview = ({ item }: { item: SavedItem }) => {
         </div>
         <div className="flex min-w-0 items-start gap-3">
           <div className="grid h-10 w-10 shrink-0 place-items-center overflow-hidden rounded-lg border border-[#e7eaf1] bg-[#fbfcff]">
-            {item.faviconUrl ? (
+            {faviconSrc ? (
               <img
                 className="h-5 w-5 object-contain"
-                src={apiAssetUrl(item.faviconUrl)}
+                src={faviconSrc}
                 alt=""
                 referrerPolicy="no-referrer"
               />

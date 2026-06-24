@@ -289,8 +289,10 @@ export const SavePanel = (props: { initialPage: ActivePage; onClose: () => void 
       await rpcCall("savedItems/create", {
         description: page().description || undefined,
         folderId: selectedFolderId() || undefined,
+        imageUrl: page().imageUrl || undefined,
         libraryId: selectedFolderId() ? undefined : selectedLibraryId() ?? undefined,
         tagIds,
+        title: page().title || undefined,
         url: page().url
       });
 

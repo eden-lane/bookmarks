@@ -32,6 +32,14 @@ export const hostFromUrl = (url: string) => {
   }
 };
 
+export const fallbackFaviconUrl = (url: string) => {
+  try {
+    return new URL("/favicon.ico", new URL(url).origin).toString();
+  } catch {
+    return null;
+  }
+};
+
 export const isValidSavedItemUrl = (url: string) => {
   try {
     const parsedUrl = new URL(url);

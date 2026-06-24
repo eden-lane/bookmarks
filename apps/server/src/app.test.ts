@@ -484,8 +484,11 @@ describe("savedItems RPC", () => {
       createdByUserId: DEV_USER_ID,
       description: "User edited description",
       folderId: null,
+      imageUrl: null,
       libraryId: DEV_PERSONAL_LIBRARY_ID,
+      siteName: null,
       tagIds: undefined,
+      title: null,
       url: "https://example.com/article"
     });
     expect(queuedIds).toEqual(["00000000-0000-4000-8000-000000000010"]);
@@ -653,8 +656,11 @@ describe("savedItems RPC", () => {
       createdByUserId: DEV_USER_ID,
       description: null,
       folderId: "00000000-0000-4000-8000-000000000020",
+      imageUrl: null,
       libraryId: DEV_PERSONAL_LIBRARY_ID,
+      siteName: null,
       tagIds: ["00000000-0000-4000-8000-000000000030"],
+      title: null,
       url: "https://example.com/article"
     });
   });

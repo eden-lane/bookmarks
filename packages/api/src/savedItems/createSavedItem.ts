@@ -5,6 +5,8 @@ import { savedItemSelectFields, serializeSavedItem } from "./savedItemRows";
 import type { CreateSavedItemInput } from "./types";
 
 export const createSavedItem = async (db: Database, input: CreateSavedItemInput) => {
+  const hasClientMetadata = Boolean(input.title || input.siteName || input.imageUrl);
+
   return db.transaction(async (tx) => {
     const [savedItem] = await tx
       .insert(schema.savedItems)
@@ -12,7 +14,12 @@ export const createSavedItem = async (db: Database, input: CreateSavedItemInput)
         createdByUserId: input.createdByUserId,
         description: input.description,
         folderId: input.folderId,
+        imageUrl: input.imageUrl,
         libraryId: input.libraryId,
+        metadataFetchedAt: hasClientMetadata ? new Date() : null,
+        metadataStatus: hasClientMetadata ? "fetched" : "pending",
+        siteName: input.siteName,
+        title: input.title,
         url: input.url
       })
       .onConflictDoUpdate({
@@ -20,6 +27,11 @@ export const createSavedItem = async (db: Database, input: CreateSavedItemInput)
         set: {
           description: input.description,
           folderId: input.folderId,
+          imageUrl: input.imageUrl ?? sql`${schema.savedItems.imageUrl}`,
+          metadataFetchedAt: hasClientMetadata ? new Date() : sql`${schema.savedItems.metadataFetchedAt}`,
+          metadataStatus: hasClientMetadata ? "fetched" : sql`${schema.savedItems.metadataStatus}`,
+          siteName: input.siteName ?? sql`${schema.savedItems.siteName}`,
+          title: input.title ?? sql`${schema.savedItems.title}`,
           updatedAt: sql`now()`
         }
       })

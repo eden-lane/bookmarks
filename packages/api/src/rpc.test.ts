@@ -131,12 +131,43 @@ describe("RPC OAuth scopes", () => {
     expect(response.status).toBe(200);
     expect(calls).toHaveLength(1);
   });
+
+  test("passes client-side metadata through saved item creation", async () => {
+    const calls: unknown[] = [];
+    const response = await rpcRequest({
+      body: {
+        description: "Browser captured description",
+        imageUrl: "https://example.com/cover.png",
+        siteName: "Example",
+        title: "Browser captured title",
+        url: "https://example.com/article"
+      },
+      calls
+    });
+
+    expect(response.status).toBe(200);
+    expect(calls).toEqual([
+      {
+        createdByUserId: USER_ID,
+        description: "Browser captured description",
+        folderId: null,
+        imageUrl: "https://example.com/cover.png",
+        libraryId: LIBRARY_ID,
+        siteName: "Example",
+        tagIds: undefined,
+        title: "Browser captured title",
+        url: "https://example.com/article"
+      }
+    ]);
+  });
 });
 
 const rpcRequest = async ({
+  body = { url: "https://example.com/article" },
   calls,
   oauthScopes
 }: {
+  body?: Record<string, unknown>;
   calls: unknown[];
   oauthScopes?: ReadonlySet<"read:saved_items" | "write:saved_items">;
 }) => {
@@ -150,7 +181,7 @@ const rpcRequest = async ({
   );
   const { matched, response } = await handler.handle(
     new Request("https://shelf.example/rpc/savedItems/create", {
-      body: JSON.stringify({ json: { url: "https://example.com/article" } }),
+      body: JSON.stringify({ json: body }),
       headers: {
         "content-type": "application/json"
       },

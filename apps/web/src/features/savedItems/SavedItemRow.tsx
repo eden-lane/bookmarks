@@ -12,7 +12,12 @@ import {
 import { apiAssetUrl } from "../../api";
 import { BOOKMARK_CONTEXT_MENU_SIZE, clampContextMenuPosition } from "../../utils/contextMenu";
 import { SavedItemContextMenu } from "./SavedItemContextMenu";
-import { copySavedItemLink, formatSavedItemDate, hostFromUrl } from "./savedItemUtils";
+import {
+  copySavedItemLink,
+  fallbackFaviconUrl,
+  formatSavedItemDate,
+  hostFromUrl
+} from "./savedItemUtils";
 
 export const SavedItemRow = ({
   item,
@@ -26,7 +31,7 @@ export const SavedItemRow = ({
   onLinkCopied: () => void;
 }) => {
   const host = hostFromUrl(item.url);
-  const faviconSrc = item.faviconUrl ? apiAssetUrl(item.faviconUrl) : null;
+  const faviconSrc = item.faviconUrl ? apiAssetUrl(item.faviconUrl) : fallbackFaviconUrl(item.url);
   const [menu, setMenu] = useState<{ x: number; y: number } | null>(null);
   const title = item.title || host || item.url;
   const contextLabel = [item.libraryName, item.folderName ?? "Inbox"].filter(Boolean).join(" / ");
