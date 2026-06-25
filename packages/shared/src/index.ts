@@ -157,6 +157,14 @@ export interface DeleteSavedItemInput {
   savedItemId: string;
 }
 
+export interface UpdateSavedItemInput {
+  savedItemId: string;
+  url: string;
+  description?: string | null;
+  folderId?: string | null;
+  tagIds?: string[];
+}
+
 export interface MoveSavedItemsInput {
   savedItemIds: string[];
   destinationFolderId?: string | null;

@@ -12,6 +12,7 @@ import type {
   MoveTagInput,
   SearchSavedItemsInput,
   UpdateFolderInput,
+  UpdateSavedItemInput,
   UpdateTagInput
 } from "@shelf/shared";
 import { ORPCError, os } from "@orpc/server";
@@ -233,6 +234,40 @@ export const createRpcRouter = (options: RpcRouterOptions) => ({
       });
 
       return result;
+    }),
+    update: os.handler(async ({ input }) => {
+      assertCurrentUser(options.currentUser);
+      assertOAuthScope(options.oauthScopes, "write:saved_items");
+      assertSavedItemsStore(options.savedItemsStore);
+
+      const savedItem = parseUpdateSavedItemInput(input);
+
+      if (!savedItem) {
+        throw new ORPCError("BAD_REQUEST", {
+          message: "Enter a valid URL"
+        });
+      }
+
+      const updatedSavedItem = await options.savedItemsStore.updateSavedItem({
+        ...savedItem,
+        allowedLibraryIds: currentUserLibraryIds(options.currentUser),
+        description: savedItem.description ?? null
+      });
+
+      await upsertSavedItemSearchDocuments(options.savedItemsStore, options.savedItemSearchIndex, {
+        libraryIds: currentUserLibraryIds(options.currentUser),
+        savedItemIds: [updatedSavedItem.id]
+      });
+
+      if (updatedSavedItem.metadataStatus !== "fetched") {
+        await options.savedItemEnrichmentQueue
+          ?.enqueueSavedItem(updatedSavedItem.id)
+          .catch((error: unknown) => {
+            console.error("Unable to enqueue saved item enrichment", error);
+          });
+      }
+
+      return updatedSavedItem;
     }),
     list: os.handler(async ({ input }) => {
       if (!options.currentUser) {
@@ -685,6 +720,36 @@ const parseDeleteSavedItemInput = (input: unknown): DeleteSavedItemInput | null 
 
   return {
     savedItemId: input.savedItemId
+  };
+};
+
+const parseUpdateSavedItemInput = (input: unknown): UpdateSavedItemInput | null => {
+  if (
+    !isRecord(input) ||
+    typeof input.savedItemId !== "string" ||
+    !input.savedItemId ||
+    typeof input.url !== "string"
+  ) {
+    return null;
+  }
+
+  const url = parseHttpUrl(input.url);
+
+  if (!url) {
+    return null;
+  }
+
+  return {
+    description: normalizeOptionalText(input.description),
+    folderId:
+      typeof input.folderId === "string" && input.folderId
+        ? input.folderId
+        : input.folderId === null
+          ? null
+          : undefined,
+    savedItemId: input.savedItemId,
+    tagIds: parseSelectedTagIds(input.tagIds),
+    url
   };
 };
 

@@ -22,7 +22,7 @@ import {
   IconTags,
   IconX
 } from "@tabler/icons-react";
-import { createSavedItem, createTag, getSavedItemPreview } from "../../api";
+import { createSavedItem, createTag, getSavedItemPreview, updateSavedItem } from "../../api";
 import { buildFolderTree, folderPath } from "../folders/folderTree";
 import {
   DEFAULT_FOLDER_ICON_COLOR,
@@ -39,6 +39,7 @@ import {
 
 export const AddSavedItemDialog = ({
   folders,
+  editingItem,
   isOpen,
   targetFolder,
   targetLibraryId,
@@ -50,6 +51,7 @@ export const AddSavedItemDialog = ({
   onOpenChange
 }: {
   folders: FolderItem[];
+  editingItem?: SavedItem | null;
   isOpen: boolean;
   targetFolder: FolderItem | null;
   targetLibraryId: string | null;
@@ -70,6 +72,7 @@ export const AddSavedItemDialog = ({
   const lastPreviewUrlRef = useRef<string | null>(null);
   const [isUrlInvalid, setIsUrlInvalid] = useState(false);
   const [isUrlShaking, setIsUrlShaking] = useState(false);
+  const [urlValue, setUrlValue] = useState("");
   const [descriptionValue, setDescriptionValue] = useState("");
   const [isDescriptionPreviewLoading, setIsDescriptionPreviewLoading] = useState(false);
   const [folderPickerOpen, setFolderPickerOpen] = useState(false);
@@ -79,10 +82,11 @@ export const AddSavedItemDialog = ({
   const [tagInputValue, setTagInputValue] = useState("");
   const [selectedTagOptions, setSelectedTagOptions] = useState<TagComboboxOption[]>([]);
   const queryClient = useQueryClient();
+  const isEditing = Boolean(editingItem);
   const selectedFolder = selectedFolderId
     ? (folders.find((folder) => folder.id === selectedFolderId) ?? null)
     : null;
-  const baseLibraryId = targetFolder?.libraryId ?? targetLibraryId ?? null;
+  const baseLibraryId = editingItem?.libraryId ?? targetFolder?.libraryId ?? targetLibraryId ?? null;
   const selectedLibraryId = selectedFolder?.libraryId ?? baseLibraryId;
   const visibleFolders = useMemo(
     () =>
@@ -288,6 +292,7 @@ export const AddSavedItemDialog = ({
       formRef.current?.reset();
       setSelectedFolderId(targetFolder?.id ?? null);
       setSelectedTagOptions([]);
+      setUrlValue("");
       setDescriptionValue("");
       setIsDescriptionPreviewLoading(false);
       descriptionEditVersionRef.current = 0;
@@ -342,15 +347,84 @@ export const AddSavedItemDialog = ({
     }
   });
 
+  const updateSavedItemMutation = useMutation({
+    mutationFn: async ({
+      existingTagIds,
+      newTagNames,
+      ...input
+    }: UpdateSavedItemMutationInput) => {
+      if (newTagNames.length > 0 && !input.libraryId) {
+        throw new Error("A library is required to create tags");
+      }
+
+      const createdTags = await Promise.all(
+        newTagNames.map((name) => createTag({ libraryId: input.libraryId as string, name }))
+      );
+      const tagIds = [...existingTagIds, ...createdTags.map((tag) => tag.id)];
+
+      return updateSavedItem({
+        description: input.description,
+        folderId: input.folderId ?? null,
+        savedItemId: input.savedItemId,
+        tagIds,
+        url: input.url
+      });
+    },
+    onSuccess: (savedItem) => {
+      for (const [queryKey] of queryClient.getQueriesData<
+        InfiniteData<SavedItemsPageResponse, string | null>
+      >({ queryKey: ["savedItems"] })) {
+        queryClient.setQueryData<InfiniteData<SavedItemsPageResponse, string | null>>(
+          queryKey,
+          (data) =>
+            updateSavedItemInPages(data, savedItem, savedItemMatchesQueryKey(queryKey, savedItem))
+        );
+      }
+
+      formRef.current?.reset();
+      setSelectedFolderId(targetFolder?.id ?? null);
+      setSelectedTagOptions([]);
+      setUrlValue("");
+      setDescriptionValue("");
+      setIsDescriptionPreviewLoading(false);
+      descriptionEditVersionRef.current = 0;
+      previewRequestIdRef.current += 1;
+      setFolderPickerOpen(false);
+      setFolderSearchValue("");
+      setTagPickerOpen(false);
+      setTagInputValue("");
+      lastPreviewUrlRef.current = null;
+      setIsUrlInvalid(false);
+      setIsUrlShaking(false);
+      onOpenChange(false);
+    },
+    onSettled: () => {
+      void queryClient.invalidateQueries({ queryKey: ["savedItems"] });
+      void queryClient.invalidateQueries({ queryKey: ["folders"] });
+      void queryClient.invalidateQueries({ queryKey: ["tags"] });
+    }
+  });
+  const isSaving = addSavedItem.isPending || updateSavedItemMutation.isPending;
+
   useEffect(() => {
     if (!isOpen) {
       return;
     }
 
-    const targetTag = targetTagId ? visibleTags.find((tag) => tag.id === targetTagId) : null;
-    setSelectedFolderId(targetFolder?.id ?? null);
-    setSelectedTagOptions(targetTag ? [{ kind: "existing", tag: targetTag }] : []);
-    setDescriptionValue("");
+    if (editingItem) {
+      setSelectedFolderId(editingItem.folderId);
+      setSelectedTagOptions(savedItemTagsToOptions(editingItem, tags));
+      setUrlValue(editingItem.url);
+      setDescriptionValue(editingItem.description ?? "");
+      lastPreviewUrlRef.current = editingItem.url;
+    } else {
+      const targetTag = targetTagId ? visibleTags.find((tag) => tag.id === targetTagId) : null;
+      setSelectedFolderId(targetFolder?.id ?? null);
+      setSelectedTagOptions(targetTag ? [{ kind: "existing", tag: targetTag }] : []);
+      setUrlValue("");
+      setDescriptionValue("");
+      lastPreviewUrlRef.current = null;
+    }
     setIsDescriptionPreviewLoading(false);
     descriptionEditVersionRef.current = 0;
     previewRequestIdRef.current += 1;
@@ -358,8 +432,9 @@ export const AddSavedItemDialog = ({
     setFolderSearchValue("");
     setTagPickerOpen(false);
     setTagInputValue("");
-    lastPreviewUrlRef.current = null;
-  }, [isOpen, targetFolder, targetTagId, visibleTags]);
+    setIsUrlInvalid(false);
+    setIsUrlShaking(false);
+  }, [editingItem, isOpen, tags, targetFolder, targetTagId, visibleTags]);
 
   useEffect(() => {
     if (!isOpen) {
@@ -431,6 +506,10 @@ export const AddSavedItemDialog = ({
   };
 
   const handleUrlPaste = (event: ClipboardEvent<HTMLInputElement>) => {
+    if (isEditing) {
+      return;
+    }
+
     fetchDescriptionPreview(event.clipboardData.getData("text"));
   };
 
@@ -503,7 +582,7 @@ export const AddSavedItemDialog = ({
   const submitSavedItem = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     const formData = new FormData(event.currentTarget);
-    const url = (urlInputRef.current?.value ?? String(formData.get("url") ?? "")).trim();
+    const url = (urlValue || urlInputRef.current?.value || String(formData.get("url") ?? "")).trim();
 
     if (!isValidSavedItemUrl(url)) {
       setIsUrlInvalid(true);
@@ -533,14 +612,29 @@ export const AddSavedItemDialog = ({
       option.kind === "new" ? [option.name] : []
     );
 
-    addSavedItem.mutate({
+    const input = {
       description: descriptionValue.trim() || null,
       existingTagIds,
       folderId: selectedFolder?.id,
       libraryId: selectedFolder?.libraryId ?? selectedLibraryId ?? undefined,
       newTagNames,
-      optimisticFolder: selectedFolder,
       url
+    };
+
+    if (editingItem) {
+      updateSavedItemMutation.mutate({
+        ...input,
+        folderId: selectedFolder?.id ?? null,
+        libraryId: selectedFolder?.libraryId ?? selectedLibraryId ?? editingItem.libraryId,
+        savedItemId: editingItem.id
+      });
+      return;
+    }
+
+    addSavedItem.mutate({
+      ...input,
+      folderId: selectedFolder?.id,
+      optimisticFolder: selectedFolder
     });
   };
 
@@ -551,16 +645,18 @@ export const AddSavedItemDialog = ({
         onOpenChange(open);
         if (open) {
           addSavedItem.reset();
+          updateSavedItemMutation.reset();
           setSelectedFolderId(targetFolder?.id ?? null);
           setFolderPickerOpen(false);
           setFolderSearchValue("");
           setTagPickerOpen(false);
           setTagInputValue("");
+          setUrlValue(editingItem?.url ?? "");
           setDescriptionValue("");
           setIsDescriptionPreviewLoading(false);
           descriptionEditVersionRef.current = 0;
           previewRequestIdRef.current += 1;
-          lastPreviewUrlRef.current = null;
+          lastPreviewUrlRef.current = editingItem?.url ?? null;
           setIsUrlInvalid(false);
           setIsUrlShaking(false);
         }
@@ -570,14 +666,20 @@ export const AddSavedItemDialog = ({
         <Dialog.Backdrop className="fixed inset-0 z-40 bg-[#101522]/45" />
         <Dialog.Popup className="fixed top-1/2 left-1/2 z-50 flex w-[min(calc(100vw-32px),680px)] -translate-x-1/2 -translate-y-1/2 flex-col overflow-hidden rounded-[22px] border border-[#dfe4ef] bg-white text-[#242833] shadow-[0_18px_60px_rgb(22_28_43_/_0.18)] outline-none max-md:inset-0 max-md:top-0 max-md:left-0 max-md:h-dvh max-md:w-screen max-md:translate-x-0 max-md:translate-y-0 max-md:rounded-none max-md:border-0 max-md:shadow-none">
           <Dialog.Title className="sr-only">
-            {targetFolder ? `Add to ${targetFolder.name}` : "Add saved item"}
+            {isEditing
+              ? "Edit saved item"
+              : targetFolder
+                ? `Add to ${targetFolder.name}`
+                : "Add saved item"}
           </Dialog.Title>
           <Dialog.Description className="sr-only">
-            Paste the page link you want to save and edit the description before saving.
+            {isEditing
+              ? "Update the saved page link, description, folder, and tags."
+              : "Paste the page link you want to save and edit the description before saving."}
           </Dialog.Description>
           <Dialog.Close
             className="absolute top-4 right-4 grid h-8 w-8 place-items-center rounded-lg border border-transparent text-[#697080] outline-none hover:border-[#e4e7ef] hover:bg-[#f7f8fc] hover:text-[#242833] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#3b8df5] max-md:top-[calc(1rem+env(safe-area-inset-top))]"
-            aria-label="Close add saved item dialog"
+            aria-label={isEditing ? "Close edit saved item dialog" : "Close add saved item dialog"}
             type="button"
           >
             <IconX size={16} stroke={1.5} aria-hidden="true" focusable="false" />
@@ -592,38 +694,42 @@ export const AddSavedItemDialog = ({
               <label className="sr-only" htmlFor="savedItem-url">
                 Page URL
               </label>
-                <input
-                  className={[
-                    "min-h-12 rounded-xl border bg-white px-3 pr-10 text-lg font-medium text-[#242833] outline-none placeholder:text-[#7b8088] focus:border-[#3b8df5] focus:ring-3 focus:ring-[#d9eaff]",
-                    isUrlInvalid ? "border-[#ef4444] ring-3 ring-[#fee2e2]" : "border-transparent",
-                    isUrlShaking ? "field-shake" : ""
-                  ].join(" ")}
-                  aria-invalid={isUrlInvalid}
-                  autoComplete="url"
-                  data-1p-ignore="true"
-                  data-op-ignore="true"
-                  id="savedItem-url"
-                  inputMode="url"
-                  name="url"
-                  placeholder="Paste URL..."
-                  ref={urlInputRef}
-                  type="text"
-                  onAnimationEnd={() => setIsUrlShaking(false)}
-                  onChange={(event) => {
-                    if (isValidSavedItemUrl(event.target.value.trim())) {
-                      setIsUrlInvalid(false);
-                    }
-                  }}
-                  onInput={(event) => {
-                    const nextUrl = event.currentTarget.value.trim();
+              <input
+                className={[
+                  "min-h-12 rounded-xl border bg-white px-3 pr-10 text-lg font-medium text-[#242833] outline-none placeholder:text-[#7b8088] focus:border-[#3b8df5] focus:ring-3 focus:ring-[#d9eaff]",
+                  isUrlInvalid ? "border-[#ef4444] ring-3 ring-[#fee2e2]" : "border-transparent",
+                  isUrlShaking ? "field-shake" : ""
+                ].join(" ")}
+                aria-invalid={isUrlInvalid}
+                autoComplete="url"
+                data-1p-ignore="true"
+                data-op-ignore="true"
+                id="savedItem-url"
+                inputMode="url"
+                name="url"
+                placeholder="Paste URL..."
+                ref={urlInputRef}
+                type="text"
+                value={urlValue}
+                onAnimationEnd={() => setIsUrlShaking(false)}
+                onChange={(event) => {
+                  const nextUrl = event.target.value;
+                  setUrlValue(nextUrl);
+                  if (isValidSavedItemUrl(nextUrl.trim())) {
+                    setIsUrlInvalid(false);
+                  }
+                }}
+                onInput={(event) => {
+                  const nextUrl = event.currentTarget.value.trim();
+                  setUrlValue(event.currentTarget.value);
 
-                    if (isValidSavedItemUrl(nextUrl)) {
-                      setIsUrlInvalid(false);
-                      fetchDescriptionPreview(nextUrl);
-                    }
-                  }}
-                  onPaste={handleUrlPaste}
-                />
+                  if (!isEditing && isValidSavedItemUrl(nextUrl)) {
+                    setIsUrlInvalid(false);
+                    fetchDescriptionPreview(nextUrl);
+                  }
+                }}
+                onPaste={handleUrlPaste}
+              />
               <label className="sr-only" htmlFor="savedItem-description">
                 Description
               </label>
@@ -645,9 +751,9 @@ export const AddSavedItemDialog = ({
                   setDescriptionValue(event.currentTarget.value);
                 }}
               />
-              {addSavedItem.isError ? (
+              {addSavedItem.isError || updateSavedItemMutation.isError ? (
                 <p className="m-0 rounded-lg border border-[#f0b37e] bg-[#fff8f1] px-3 py-2 text-sm font-medium text-[#9a4d0a]">
-                  Saved item could not be saved.
+                  Saved item could not be {isEditing ? "updated" : "saved"}.
                 </p>
               ) : null}
             </div>
@@ -873,17 +979,17 @@ export const AddSavedItemDialog = ({
               <div className="flex shrink-0 items-center gap-2">
                 <Dialog.Close
                   className="min-h-10 rounded-lg border border-[#dfe4ef] bg-white px-3 text-sm font-medium text-[#4b5262] outline-none hover:bg-[#f7f8fc] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#3b8df5]"
-                  disabled={addSavedItem.isPending}
+                  disabled={isSaving}
                   type="button"
                 >
                   Cancel
                 </Dialog.Close>
                 <button
                   className="min-h-10 rounded-lg border border-[#3b8df5] bg-[#3b8df5] px-4 text-sm font-medium text-white outline-none hover:bg-[#2f80ed] disabled:cursor-not-allowed disabled:border-[#91bff8] disabled:bg-[#91bff8] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#3b8df5]"
-                  disabled={addSavedItem.isPending}
+                  disabled={isSaving}
                   type="submit"
                 >
-                  {addSavedItem.isPending ? "Saving" : "Save"}
+                  {isSaving ? (isEditing ? "Updating" : "Saving") : isEditing ? "Update" : "Save"}
                 </button>
               </div>
             </div>
@@ -901,6 +1007,16 @@ type AddSavedItemMutationInput = {
   libraryId?: string;
   newTagNames: string[];
   optimisticFolder: FolderItem | null;
+  url: string;
+};
+
+type UpdateSavedItemMutationInput = {
+  description: string | null;
+  existingTagIds: string[];
+  folderId: string | null;
+  libraryId: string;
+  newTagNames: string[];
+  savedItemId: string;
   url: string;
 };
 
@@ -967,6 +1083,75 @@ const mergeTagOptionsForSubmit = (
   options: TagComboboxOption[],
   option: ExistingTagOption | NewTagOption
 ) => normalizeSelectedTagOptions([...options, option]);
+
+const savedItemTagsToOptions = (item: SavedItem, tags: TagItem[]): ExistingTagOption[] =>
+  (item.tags ?? []).map((itemTag) => ({
+    kind: "existing",
+    tag:
+      tags.find((tag) => tag.id === itemTag.id) ??
+      ({
+        id: itemTag.id,
+        libraryId: item.libraryId,
+        name: itemTag.name,
+        color: itemTag.color,
+        sortOrder: 0,
+        savedItemCount: 0,
+        createdAt: item.createdAt,
+        updatedAt: item.updatedAt
+      } satisfies TagItem)
+  }));
+
+const updateSavedItemInPages = (
+  data: InfiniteData<SavedItemsPageResponse, string | null> | undefined,
+  savedItem: SavedItem,
+  keepUpdatedItem: boolean
+): InfiniteData<SavedItemsPageResponse, string | null> | undefined => {
+  if (!data) {
+    return data;
+  }
+
+  return {
+    ...data,
+    pages: data.pages.map((page) => ({
+      ...page,
+      items: page.items.flatMap((item) =>
+        item.id === savedItem.id ? (keepUpdatedItem ? [savedItem] : []) : [item]
+      )
+    }))
+  };
+};
+
+const savedItemMatchesQueryKey = (queryKey: unknown, savedItem: SavedItem) => {
+  if (!Array.isArray(queryKey) || queryKey[0] !== "savedItems") {
+    return true;
+  }
+
+  if (queryKey[1] === "search") {
+    return true;
+  }
+
+  const filter = queryKey[1];
+
+  if (!filter || typeof filter !== "object") {
+    return true;
+  }
+
+  const { folderId, libraryId, tagId } = filter as {
+    folderId?: string | null;
+    libraryId?: string | null;
+    tagId?: string | null;
+  };
+
+  if (libraryId && savedItem.libraryId !== libraryId) {
+    return false;
+  }
+
+  if (tagId) {
+    return Boolean(savedItem.tags?.some((tag) => tag.id === tagId));
+  }
+
+  return savedItem.folderId === (folderId ?? null);
+};
 
 const buildFolderPickerOptions = (
   folders: FolderItem[],

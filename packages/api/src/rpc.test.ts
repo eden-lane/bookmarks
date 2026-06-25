@@ -71,6 +71,9 @@ const savedItemsStore = (calls: unknown[]): SavedItemsStore => ({
   async deleteSavedItem() {
     throw new Error("not used");
   },
+  async updateSavedItem() {
+    throw new Error("not used");
+  },
   async deleteFolder() {
     throw new Error("not used");
   },

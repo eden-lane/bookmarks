@@ -17,6 +17,7 @@ import { moveSavedItems } from "./moveSavedItems";
 import { moveTag } from "./moveTag";
 import type { SavedItemsStore } from "./types";
 import { updateFolder } from "./updateFolder";
+import { updateSavedItem } from "./updateSavedItem";
 import { updateTag } from "./updateTag";
 
 export const createDatabaseSavedItemsStore = (db: Database): SavedItemsStore => ({
@@ -24,6 +25,7 @@ export const createDatabaseSavedItemsStore = (db: Database): SavedItemsStore => 
   createFolder: (input) => createFolder(db, input),
   createTag: (input) => createTag(db, input),
   deleteSavedItem: (input) => deleteSavedItem(db, input),
+  updateSavedItem: (input) => updateSavedItem(db, input),
   deleteFolder: (input) => deleteFolder(db, input),
   deleteTag: (input) => deleteTag(db, input),
   getFavicon: (id) => getFavicon(db, id),

@@ -1,5 +1,5 @@
 import { createPortal } from "react-dom";
-import { IconCopy, IconExternalLink, IconTrash } from "@tabler/icons-react";
+import { IconCopy, IconEdit, IconExternalLink, IconTrash } from "@tabler/icons-react";
 import { ContextMenuButton } from "../../components/ContextMenuButton";
 
 export const SavedItemContextMenu = ({
@@ -8,6 +8,7 @@ export const SavedItemContextMenu = ({
   y,
   onOpenLink,
   onCopyLink,
+  onEdit,
   onDelete
 }: {
   itemTitle: string;
@@ -15,6 +16,7 @@ export const SavedItemContextMenu = ({
   y: number;
   onOpenLink: () => void;
   onCopyLink: () => void;
+  onEdit: () => void;
   onDelete: () => void;
 }) => {
   const menu = (
@@ -27,6 +29,7 @@ export const SavedItemContextMenu = ({
     >
       <ContextMenuButton icon={IconExternalLink} label="Open" onClick={onOpenLink} />
       <ContextMenuButton icon={IconCopy} label="Copy link" onClick={onCopyLink} />
+      <ContextMenuButton icon={IconEdit} label="Edit" onClick={onEdit} />
       <ContextMenuButton icon={IconTrash} label="Delete" tone="danger" onClick={onDelete} />
     </div>
   );

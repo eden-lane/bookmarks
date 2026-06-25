@@ -23,6 +23,7 @@ import type {
   SearchSavedItemsInput,
   TagItem,
   UpdateFolderInput,
+  UpdateSavedItemInput,
   UpdateTagInput
 } from "@shelf/shared";
 import { createORPCClient, type Client, type NestedClient } from "@orpc/client";
@@ -70,6 +71,7 @@ interface SavedItemsRpcClient extends Record<string, NestedClient<Record<never, 
   >;
   preview: RpcProcedure<SavedItemPreviewInput, SavedItemPreviewResponse>;
   search: RpcProcedure<SearchSavedItemsInput, SavedItemsPageResponse>;
+  update: RpcProcedure<UpdateSavedItemInput, SavedItem>;
 }
 
 interface FoldersRpcClient extends Record<string, NestedClient<Record<never, never>>> {
@@ -194,6 +196,9 @@ export const getSavedItemPreview = async (
 export const deleteSavedItem = async (
   input: DeleteSavedItemInput
 ): Promise<{ deletedSavedItemId: string }> => rpc.savedItems.delete(input);
+
+export const updateSavedItem = async (input: UpdateSavedItemInput): Promise<SavedItem> =>
+  rpc.savedItems.update(input);
 
 export const moveSavedItems = async (
   input: MoveSavedItemsInput

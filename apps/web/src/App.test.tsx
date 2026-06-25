@@ -134,6 +134,13 @@ describe("App", () => {
       tagIds?: string[];
       url?: string;
     }[] = [];
+    const savedItemUpdateRequests: {
+      description?: string | null;
+      folderId?: string | null;
+      savedItemId?: string;
+      tagIds?: string[];
+      url?: string;
+    }[] = [];
     const savedItemSearchRequests: {
       cursor?: string | null;
       libraryId?: string | null;
@@ -596,6 +603,46 @@ describe("App", () => {
             }
           }
         );
+      }
+
+      if (url.pathname === "/rpc/savedItems/update") {
+        const body = (await request.json()) as {
+          json?: {
+            description?: string | null;
+            folderId?: string | null;
+            savedItemId?: string;
+            tagIds?: string[];
+            url?: string;
+          };
+        };
+        savedItemUpdateRequests.push(body.json ?? {});
+        const itemIndex = savedItems.findIndex((item) => item.id === body.json?.savedItemId);
+        const targetFolder = body.json?.folderId
+          ? (folders.find((folder) => folder.id === body.json?.folderId) ?? null)
+          : null;
+        const updatedItem = {
+          ...savedItems[itemIndex],
+          description: body.json?.description ?? null,
+          folderId: targetFolder?.id ?? null,
+          folderName: targetFolder?.name ?? null,
+          tags: (body.json?.tagIds ?? []).flatMap((tagId) => {
+            const tag = tags.find((existingTag) => existingTag.id === tagId);
+
+            return tag ? [{ id: tag.id, name: tag.name, color: tag.color }] : [];
+          }),
+          updatedAt: "2026-06-20T12:10:00.000Z",
+          url: body.json?.url ?? savedItems[itemIndex]?.url ?? "https://example.com/article"
+        } satisfies SavedItem;
+
+        if (itemIndex >= 0) {
+          savedItems[itemIndex] = updatedItem;
+        }
+
+        return new Response(JSON.stringify({ json: updatedItem }), {
+          headers: {
+            "content-type": "application/json"
+          }
+        });
       }
 
       if (url.pathname === "/rpc/savedItems/delete") {
@@ -1082,6 +1129,7 @@ describe("App", () => {
     await waitFor(() => {
       expect(screen.getByRole("menuitem", { name: "Open" })).toBeTruthy();
       expect(screen.getByRole("menuitem", { name: "Copy link" })).toBeTruthy();
+      expect(screen.getByRole("menuitem", { name: "Edit" })).toBeTruthy();
       expect(screen.getByRole("menuitem", { name: "Delete" })).toBeTruthy();
     });
     expect(screen.getByRole("menu", { name: "Saved item actions for Example Article" }).style.left).toBe(
@@ -1102,6 +1150,33 @@ describe("App", () => {
     await waitFor(() => {
       expect(copiedLinks).toEqual(["https://example.com/article"]);
       expect(screen.getByText("Link copied")).toBeTruthy();
+    });
+
+    fireEvent.click(exampleActionsButton);
+
+    await waitFor(() => {
+      expect(screen.getByRole("menuitem", { name: "Edit" })).toBeTruthy();
+    });
+
+    fireEvent.click(screen.getByRole("menuitem", { name: "Edit" }));
+
+    await waitFor(() => {
+      expect(screen.getByRole("dialog", { name: "Edit saved item" })).toBeTruthy();
+    });
+    const editUrlInput = screen.getByLabelText("Page URL") as HTMLInputElement;
+    const editDescriptionInput = screen.getByLabelText("Description") as HTMLTextAreaElement;
+    expect(editUrlInput.value).toBe("https://example.com/article");
+    expect(editDescriptionInput.value).toBe("A saved item from the API.");
+    expect(screen.getByRole("button", { name: "Folder Inbox" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Tags Important" })).toBeTruthy();
+    fireEvent.input(editDescriptionInput, {
+      target: { value: "Edited description from dialog" }
+    });
+    expect(screen.getByRole("button", { name: "Update" })).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
+
+    await waitFor(() => {
+      expect(screen.queryByRole("dialog", { name: "Edit saved item" })).toBeNull();
     });
 
     fireEvent.click(screen.getByRole("button", { name: "Saved item actions for Plain Saved Item" }));

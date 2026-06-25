@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import type { InfiniteData } from "@tanstack/react-query";
 import { useInfiniteQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import type { SavedItemsPageResponse } from "@shelf/shared";
+import type { SavedItem, SavedItemsPageResponse } from "@shelf/shared";
 import { IconAlertTriangle, IconLink, IconRefresh } from "@tabler/icons-react";
 import { deleteSavedItem, getSavedItems, searchSavedItems } from "../../api";
 import { savedItemQueryKey } from "./savedItemUtils";
@@ -15,7 +15,8 @@ export const SavedItemsWorkspace = ({
   searchQuery,
   searchScope,
   tagId,
-  tagName
+  tagName,
+  onEditSavedItem
 }: {
   folderId: string | null;
   folderName: string | null;
@@ -24,6 +25,7 @@ export const SavedItemsWorkspace = ({
   searchScope: SavedItemSearchScope;
   tagId: string | null;
   tagName: string | null;
+  onEditSavedItem: (item: SavedItem) => void;
 }) => {
   const loadMoreRef = useRef<HTMLDivElement | null>(null);
   const queryClient = useQueryClient();
@@ -254,6 +256,7 @@ export const SavedItemsWorkspace = ({
             key={item.id}
             showFolderName={isSearching}
             onDeleteSavedItem={(savedItemId) => deleteSavedItemMutation.mutate({ savedItemId })}
+            onEditSavedItem={onEditSavedItem}
             onLinkCopied={() => setNotification("Link copied")}
           />
         ))}

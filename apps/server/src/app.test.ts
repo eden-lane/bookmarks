@@ -64,6 +64,9 @@ const createSavedItemsStore = (overrides: Partial<SavedItemsStore>): SavedItemsS
   async deleteSavedItem() {
     throw new Error("not used");
   },
+  async updateSavedItem() {
+    throw new Error("not used");
+  },
   async deleteFolder() {
     throw new Error("not used");
   },
@@ -585,6 +588,114 @@ describe("savedItems RPC", () => {
     expect(body.json.title).toBe("Searchable savedItem");
     expect(indexedDocuments).toHaveLength(1);
     consoleError.mockRestore();
+  });
+
+  test("updates a savedItem through oRPC and reindexes it", async () => {
+    const calls: Parameters<SavedItemsStore["updateSavedItem"]>[0][] = [];
+    const indexedDocuments: unknown[] = [];
+    const queuedIds: string[] = [];
+    const app = createApp({
+      savedItemEnrichmentQueue: {
+        async enqueueSavedItem(savedItemId) {
+          queuedIds.push(savedItemId);
+        }
+      },
+      savedItemsStore: createSavedItemsStore({
+        async updateSavedItem(input) {
+          calls.push(input);
+
+          return {
+            id: input.savedItemId,
+            libraryId: DEV_PERSONAL_LIBRARY_ID,
+            libraryName: DEV_PERSONAL_LIBRARY_NAME,
+            folderId: input.folderId ?? null,
+            folderName: null,
+            url: input.url,
+            title: null,
+            description: input.description,
+            siteName: null,
+            imageUrl: null,
+            metadataStatus: "pending",
+            metadataFetchedAt: null,
+            faviconId: null,
+            faviconUrl: null,
+            tags: [],
+            createdAt: "2026-06-20T12:00:00.000Z",
+            updatedAt: "2026-06-20T12:10:00.000Z"
+          };
+        },
+        async listSavedItemSearchDocuments(input) {
+          expect(input).toEqual({
+            libraryIds: [DEV_PERSONAL_LIBRARY_ID],
+            savedItemIds: ["00000000-0000-4000-8000-000000000010"]
+          });
+
+          return [
+            {
+              id: "00000000-0000-4000-8000-000000000010",
+              libraryId: DEV_PERSONAL_LIBRARY_ID,
+              libraryName: DEV_PERSONAL_LIBRARY_NAME,
+              folderId: null,
+              folderName: null,
+              url: "https://example.com/updated",
+              title: null,
+              description: "Edited",
+              siteName: null,
+              imageUrl: null,
+              metadataStatus: "pending",
+              metadataFetchedAt: null,
+              faviconId: null,
+              faviconUrl: null,
+              tags: [],
+              tagNames: [],
+              createdAt: "2026-06-20T12:00:00.000Z",
+              updatedAt: "2026-06-20T12:10:00.000Z"
+            }
+          ];
+        }
+      }),
+      currentUser,
+      dependencies: dependencies(),
+      savedItemSearchIndex: {
+        async delete() {},
+        async search() {
+          return { items: [], nextCursor: null };
+        },
+        async upsert(documents) {
+          indexedDocuments.push(...documents);
+        }
+      }
+    });
+
+    const response = await app.request("/rpc/savedItems/update", {
+      body: JSON.stringify({
+        json: {
+          description: "Edited",
+          folderId: null,
+          savedItemId: "00000000-0000-4000-8000-000000000010",
+          tagIds: [],
+          url: "https://example.com/updated"
+        }
+      }),
+      headers: {
+        "content-type": "application/json"
+      },
+      method: "POST"
+    });
+    const body = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(body.json.description).toBe("Edited");
+    expect(calls[0]).toEqual({
+      allowedLibraryIds: [DEV_PERSONAL_LIBRARY_ID],
+      description: "Edited",
+      folderId: null,
+      savedItemId: "00000000-0000-4000-8000-000000000010",
+      tagIds: [],
+      url: "https://example.com/updated"
+    });
+    expect(indexedDocuments).toHaveLength(1);
+    expect(queuedIds).toEqual(["00000000-0000-4000-8000-000000000010"]);
   });
 
   test("creates a savedItem with selected tags from the target folder library", async () => {

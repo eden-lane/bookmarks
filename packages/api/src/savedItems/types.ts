@@ -55,6 +55,15 @@ export interface DeleteSavedItemInput {
   savedItemId: string;
 }
 
+export interface UpdateSavedItemInput {
+  allowedLibraryIds: string[];
+  savedItemId: string;
+  url: string;
+  description: string | null;
+  folderId?: string | null;
+  tagIds?: string[];
+}
+
 export interface ListSavedItemSearchDocumentsInput {
   libraryIds?: string[];
   savedItemIds?: string[];
@@ -144,6 +153,7 @@ export interface SavedItemsStore {
   ): Promise<SavedItemSearchDocument[]>;
   createSavedItem(input: CreateSavedItemInput): Promise<SavedItem>;
   deleteSavedItem(input: DeleteSavedItemInput): Promise<{ deletedSavedItemId: string }>;
+  updateSavedItem(input: UpdateSavedItemInput): Promise<SavedItem>;
   moveSavedItems(input: MoveSavedItemsInput): Promise<{
     destinationFolderId: string | null;
     movedSavedItemIds: string[];

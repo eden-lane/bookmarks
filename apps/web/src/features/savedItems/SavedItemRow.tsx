@@ -23,11 +23,13 @@ export const SavedItemRow = ({
   item,
   showFolderName,
   onDeleteSavedItem,
+  onEditSavedItem,
   onLinkCopied
 }: {
   item: SavedItem;
   showFolderName: boolean;
   onDeleteSavedItem: (savedItemId: string) => void;
+  onEditSavedItem: (item: SavedItem) => void;
   onLinkCopied: () => void;
 }) => {
   const host = hostFromUrl(item.url);
@@ -75,6 +77,11 @@ export const SavedItemRow = ({
 
   const deleteItem = () => {
     onDeleteSavedItem(item.id);
+    setMenu(null);
+  };
+
+  const editItem = () => {
+    onEditSavedItem(item);
     setMenu(null);
   };
 
@@ -219,6 +226,7 @@ export const SavedItemRow = ({
           y={menu.y}
           onOpenLink={openLink}
           onCopyLink={copyLink}
+          onEdit={editItem}
           onDelete={deleteItem}
         />
       ) : null}

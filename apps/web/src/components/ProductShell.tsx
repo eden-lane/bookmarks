@@ -292,6 +292,7 @@ export const ProductShell = () => {
   const [savedItemDialogOpen, setSavedItemDialogOpen] = useState(false);
   const [savedItemTargetFolder, setSavedItemTargetFolder] = useState<FolderItem | null>(null);
   const [savedItemTargetTag, setSavedItemTargetTag] = useState<TagItem | null>(null);
+  const [editingSavedItem, setEditingSavedItem] = useState<SavedItem | null>(null);
   const [isSidebarVisible, setIsSidebarVisible] = useState(() => !isStackedSidebarViewport());
   const [isStackedSidebar, setIsStackedSidebar] = useState(isStackedSidebarViewport);
   const [activeSavedItemDragItem, setActiveSavedItemDragItem] = useState<SavedItem | null>(null);
@@ -867,8 +868,16 @@ export const ProductShell = () => {
     folder: FolderItem | null;
     tag: TagItem | null;
   }) => {
+    setEditingSavedItem(null);
     setSavedItemTargetFolder(folder);
     setSavedItemTargetTag(tag);
+    setSavedItemDialogOpen(true);
+  };
+
+  const openEditSavedItemDialog = (item: SavedItem) => {
+    setEditingSavedItem(item);
+    setSavedItemTargetFolder(null);
+    setSavedItemTargetTag(null);
     setSavedItemDialogOpen(true);
   };
 
@@ -878,6 +887,7 @@ export const ProductShell = () => {
     if (!open) {
       setSavedItemTargetFolder(null);
       setSavedItemTargetTag(null);
+      setEditingSavedItem(null);
     }
   };
 
@@ -1213,9 +1223,11 @@ export const ProductShell = () => {
           searchScope={searchState.scope}
           tagId={activeTagId}
           tagName={activeTag?.name ?? null}
+          onEditSavedItem={openEditSavedItemDialog}
         />
       </section>
       <AddSavedItemDialog
+        editingItem={editingSavedItem}
         folders={folders.data ?? []}
         isOpen={savedItemDialogOpen}
         targetFolder={savedItemDialogFolder}

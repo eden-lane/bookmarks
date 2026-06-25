@@ -22,4 +22,5 @@ export * from "./searchIndex";
 export * from "./store";
 export * from "./types";
 export * from "./updateFolder";
+export * from "./updateSavedItem";
 export * from "./updateTag";
